@@ -24,6 +24,9 @@ redirige `/api` al backend y publica `/uploads` desde el volumen compartido.
 
 ## Puesta en marcha
 
+Guía paso a paso para levantar la base de datos, el backend y el frontend y abrir
+la aplicación en el navegador: [GUIA_INICIO.md](GUIA_INICIO.md).
+
 ```bash
 # 1. Variables de entorno locales
 cp .env.example .env          # PowerShell: Copy-Item .env.example .env
