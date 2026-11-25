@@ -204,7 +204,7 @@ muestran "Acceso denegado" y un 401 global devuelve al usuario al login.
 | Inventario | implementado | implementado | Listo |
 | Caja y registrar venta | implementado | implementado | Listo |
 | Resumen de caja e historial | implementado | implementado | Listo |
-| Clientes y fiados | pendiente | pendiente | Pendiente |
+| Clientes y fiados | implementado | implementado | Listo |
 | Dashboard | pendiente | pendiente | Pendiente |
 
 Cada módulo se desarrolla en una rama `feature/<módulo>`, se prueba de punta a
@@ -304,6 +304,40 @@ con el módulo de caja.
 
 ---
 
+## Clientes y fiados
+
+El edificio se configura una sola vez con torres, pisos por torre y
+departamentos por piso. La navegación es Torre → Piso → Departamento: cada
+cuadrado muestra en coral los que tienen fiados pendientes y en menta los que
+están al día. Todos los endpoints requieren autenticación y el módulo
+`CLIENTES`.
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET/POST` | `/api/edificio/config` | Consultar o crear la configuración (una sola fila) |
+| `GET` | `/api/edificio/torres` | Torres con conteo de deudas y total pendiente |
+| `GET` | `/api/edificio/torres/{t}/pisos` | Pisos de una torre |
+| `GET` | `/api/edificio/torres/{t}/pisos/{p}/departamentos` | Departamentos de un piso |
+| `GET` | `/api/departamentos/{id}/fiados` | Fiados de un departamento (pendientes y pagados) |
+| `GET` | `/api/fiados/productos` | Catálogo simple para elegir productos al registrar fiados |
+| `POST` | `/api/fiados` | Registrar uno o varios fiados por línea de producto |
+| `PATCH` | `/api/fiados/{id}/pagar` | Marcar un fiado como pagado |
+| `GET` | `/api/fiados/deudas?nivel=edificio\|torre\|piso&torre=&piso=` | Deudas agrupadas para el panel "Revisar fiados" |
+
+El cliente envía solo `departamentoId`, `productoId` y `cantidad`: el backend
+valida la ubicación y el stock, descuenta el inventario, crea un
+`movimiento_stock` por línea y deja que la base congele nombre, tipo, precio y
+costo con `fn_linea_snapshot`. Un departamento inexistente devuelve 404, pagar
+un fiado ya pagado devuelve 409 y una configuración duplicada o inválida
+devuelve 409 o 400, siempre con mensaje en español.
+
+Las deudas se agrupan por torre, por piso o por departamento según el nivel
+consultado; cada grupo incluye su total, cantidad de fiados y los
+departamentos con sus líneas pendientes. La interfaz permite registrar fiados y
+pagarlos desde el detalle del departamento o desde el panel de deudas.
+
+---
+
 ## Producción (Hetzner)
 
 ```bash
@@ -332,5 +366,5 @@ productos) y activar los snapshots del proveedor.
 - El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
   inferior en teléfono.
 - Los módulos de operación se implementan uno por uno; ya están completos
-  Cuentas, Inventario, Venta, Caja e Historial. Clientes y Dashboard siguen en
+  Cuentas, Inventario, Venta, Caja, Historial y Clientes. Dashboard sigue en
   marcha.
