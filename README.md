@@ -205,7 +205,7 @@ muestran "Acceso denegado" y un 401 global devuelve al usuario al login.
 | Caja y registrar venta | implementado | implementado | Listo |
 | Resumen de caja e historial | implementado | implementado | Listo |
 | Clientes y fiados | implementado | implementado | Listo |
-| Dashboard | pendiente | pendiente | Pendiente |
+| Dashboard | implementado | implementado | Listo |
 
 Cada módulo se desarrolla en una rama `feature/<módulo>`, se prueba de punta a
 punta y se integra a `develop` mediante pull request.
@@ -338,6 +338,33 @@ pagarlos desde el detalle del departamento o desde el panel de deudas.
 
 ---
 
+## Dashboard
+
+Métricas de ventas, ganancia, merma y productos destacados. Todos los endpoints
+requieren autenticación y el módulo `DASHBOARD`.
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/dashboard/ventas-mensuales?meses=6` o `?anio=2026` | Serie mensual consecutiva (1 a 12 meses, o enero–diciembre) |
+| `GET` | `/api/dashboard/resumen?desde=&hasta=` | Totales del rango inclusivo `AAAA-MM-DD` |
+| `GET` | `/api/dashboard/top-productos?desde=&hasta=&orden=desc\|asc` | Hasta 10 productos por cantidad |
+| `GET` | `/api/dashboard/mes?mes=2026-11` | Resumen, puntos diarios y top 5 del mes |
+
+Las cifras salen de los snapshots guardados en `venta_item` y `merma`, nunca
+del costo actual: cambiar un costo hoy no altera las ventas pasadas. Los fiados
+cuentan como ingreso **cuando se marcan como pagados** (`pagado_en`); mientras
+están pendientes descuentan stock pero no aparecen en el dashboard. La
+ganancia neta es `ganancia - merma`, y `itemsSinCosto` advierte de líneas sin
+costo registrado. Los meses y días se agrupan en `America/Lima`.
+
+La interfaz muestra KPIs con sparkline, un área de ventas y ganancia neta,
+barras redondeadas por mes con el mes activo resaltado, una dona de los productos
+más vendidos, el detalle diario del mes y tarjetas de más/menos vendidos con
+miniaturas. El selector permite cambiar entre 6 meses, 12 meses y un año
+completo, y elegir cualquier mes de la serie tocando una barra o el selector.
+
+---
+
 ## Producción (Hetzner)
 
 ```bash
@@ -366,5 +393,4 @@ productos) y activar los snapshots del proveedor.
 - El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
   inferior en teléfono.
 - Los módulos de operación se implementan uno por uno; ya están completos
-  Cuentas, Inventario, Venta, Caja, Historial y Clientes. Dashboard sigue en
-  marcha.
+  Cuentas, Inventario, Venta, Caja, Historial, Clientes y Dashboard.
