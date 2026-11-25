@@ -1,0 +1,207 @@
+# Sistema de Inventario, Ventas y Fiados
+
+ERP para una tienda dentro de un condominio: inventario con costos y mermas,
+ventas con caja, fiados por departamento y dashboard de ganancias.
+
+Monorepo con tres contenedores:
+
+- **frontend** — React 19 + Vite + TypeScript + Tailwind CSS + shadcn/ui (Nginx).
+- **backend** — Quarkus 3 + Java 21 + Panache + Flyway + JWT.
+- **db** — PostgreSQL 16.
+
+Todo el tráfico entra por el contenedor `frontend` (Nginx), que sirve la SPA,
+redirige `/api` al backend y publica `/uploads` desde el volumen compartido.
+
+---
+
+## Requisitos
+
+- Docker Desktop con Compose v2
+- Git
+- Opcional para desarrollo sin Docker: JDK 21, Node.js 22+ y `openssl`
+
+---
+
+## Puesta en marcha
+
+```bash
+# 1. Variables de entorno locales
+cp .env.example .env          # PowerShell: Copy-Item .env.example .env
+
+# 2. Llaves JWT (no se versionan)
+./scripts/generate-jwt-keys.sh    # Windows: .\scripts\generate-jwt-keys.ps1
+
+# 3. Levantar los tres contenedores
+docker compose up -d --build
+```
+
+La aplicación queda en **http://localhost**. Flyway crea el esquema y los datos
+iniciales (roles, permisos y categorías) en el primer arranque del backend.
+
+Servicios útiles:
+
+| URL | Descripción |
+|---|---|
+| `http://localhost` | Aplicación |
+| `http://localhost/api/q/health` | Salud del backend |
+| `http://localhost/api/q/swagger-ui` | Swagger UI (solo perfil dev) |
+| `localhost:5432` | PostgreSQL (solo local; en producción no se publica) |
+
+---
+
+## Desarrollo con recarga en caliente
+
+```bash
+docker compose up -d db
+
+# Terminal 1
+cd backend
+./mvnw quarkus:dev            # Windows: .\mvnw.cmd quarkus:dev
+
+# Terminal 2
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173
+```
+
+> En Linux/macOS, si `backend/mvnw` no tiene permiso de ejecución, ejecuta
+> `chmod +x backend/mvnw` una sola vez.
+
+Vite proxya `/api` y `/uploads` hacia `http://localhost:8080`, así que el
+frontend se comporta igual que detrás de Nginx.
+
+El perfil `dev` del backend usa por defecto la base `sistema` con usuario
+`sistema` y contraseña `cambia_esto` (los valores de `.env.example`). Si cambias
+las credenciales en `.env`, expórtalas también al arrancar Quarkus o ajusta los
+valores `%dev` de `backend/src/main/resources/application.properties`.
+
+### Pruebas
+
+```bash
+cd frontend
+npm test                      # Vitest
+npm run build                 # TypeScript + build de producción
+
+cd backend
+./mvnw test
+./mvnw package -DskipTests
+```
+
+---
+
+## Estructura
+
+```
+.
+├── backend/
+│   ├── src/main/java/com/tuempresa/sistema/
+│   │   ├── common/            # seguridad, errores, respuestas, archivos
+│   │   ├── inventario/
+│   │   ├── clientes/
+│   │   ├── venta/
+│   │   ├── caja/
+│   │   ├── historial/
+│   │   ├── cuentas/
+│   │   └── dashboard/
+│   ├── src/main/resources/
+│   │   ├── application.properties
+│   │   └── db/migration/V1__init.sql
+│   ├── keys/                  # llaves JWT locales (ignoradas por git)
+│   ├── Dockerfile
+│   └── pom.xml
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # layout y UI compartida
+│   │   ├── lib/               # api, navegación y utilidades
+│   │   ├── modules/           # una carpeta por módulo
+│   │   ├── App.tsx
+│   │   ├── index.css          # tokens de diseño (Tailwind v4)
+│   │   └── main.tsx
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── package.json
+├── scripts/                   # generación de llaves JWT
+├── docker-compose.yml
+├── docker-compose.prod.yml
+└── .env.example
+```
+
+Cada módulo nuevo del backend vive en su paquete `com.tuempresa.sistema.<módulo>`
+con sus entidades, repositorios, servicios y resources. En el frontend, cada
+módulo tiene su carpeta en `src/modules/<módulo>` (páginas, componentes y hooks
+propios) y solo comparte `components/ui`, `components/layout` y `lib`.
+
+### Base de datos
+
+`backend/src/main/resources/db/migration/V1__init.sql` reemplaza al script de
+referencia y **sí se versiona**: es la migración que crea el esquema en local y
+en producción. Los cambios posteriores se agregan como `V2__…`, `V3__…`; la
+migración `V1` no se edita una vez desplegada.
+
+La base ya resuelve snapshots de precios/costos, historial de costos, una sola
+caja abierta, validación de pagos, stock no negativo y numeración de
+departamentos. El backend se encarga de mover stock, registrar
+`movimiento_stock`, hashear contraseñas y crear el usuario principal inicial.
+
+---
+
+## Variables de entorno
+
+| Variable | Uso |
+|---|---|
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credenciales de PostgreSQL |
+| `POSTGRES_PORT` | Puerto local de la base (por defecto `5432`) |
+| `TZ` | Zona horaria de los contenedores (`America/Lima`) |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Usuario principal inicial |
+| `JWT_KEYS_DIR` | Carpeta local con `privateKey.pem` y `publicKey.pem` |
+
+`.env` y las llaves `*.pem` no se versionan.
+
+---
+
+## Módulos y estado
+
+| Módulo | Backend | Frontend | Estado |
+|---|---|---|---|
+| Base / layout / tema | estructura | estructura | Listo |
+| Cuentas y permisos (login JWT) | pendiente | pendiente | Pendiente |
+| Inventario | pendiente | pendiente | Pendiente |
+| Caja y registrar venta | pendiente | pendiente | Pendiente |
+| Resumen de caja e historial | pendiente | pendiente | Pendiente |
+| Clientes y fiados | pendiente | pendiente | Pendiente |
+| Dashboard | pendiente | pendiente | Pendiente |
+
+Cada módulo se desarrolla en una rama `feature/<módulo>`, se prueba de punta a
+punta y se integra a `develop`.
+
+---
+
+## Producción (Hetzner)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+El override de producción deja de publicar el puerto de PostgreSQL y mantiene
+expuesto solo el frontend. Para HTTPS se recomienda poner Caddy o Cloudflare
+delante del puerto 80.
+
+Backups mínimos:
+
+```bash
+docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > backup_$(date +%F).sql.gz
+```
+
+Además del `pg_dump`, hay que respaldar el volumen `uploads` (imágenes de
+productos) y activar los snapshots del proveedor.
+
+---
+
+## Notas de diseño
+
+- El tema visual (paleta violeta, tarjetas redondeadas, tipografía Plus Jakarta
+  Sans) está definido como tokens de Tailwind v4 en `frontend/src/index.css`.
+- El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
+  inferior en teléfono.
+- Las pantallas de módulo son marcadores de posición hasta que se implemente
+  cada funcionalidad.

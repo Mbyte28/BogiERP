@@ -1,0 +1,2 @@
+# Carpeta para las llaves JWT locales (no se versionan).
+# Generarlas con scripts/generate-jwt-keys.ps1 (Windows) o scripts/generate-jwt-keys.sh.

@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+
+  /* Marca */
+  --color-primary-50: #f3e8fa;
+  --color-primary-100: #e9d5f6;
+  --color-primary-500: #ac59db;
+  --color-primary-600: #8e3fbf;
+
+  /* Superficies y texto */
+  --color-app: #f2f3f5;
+  --color-surface: #ffffff;
+  --color-line: #e2e6eb;
+  --color-ink: #1f2330;
+  --color-ink-soft: #7a8190;
+
+  /* Estados */
+  --color-success: #6ecaba;
+  --color-success-strong: #34d396;
+  --color-danger: #f08b7f;
+  --color-warning: #e9b974;
+  --color-info: #3182c4;
+  --color-info-soft: #5bccfa;
+
+  /* Series de gráficos (en orden) */
+  --color-chart-1: #ac59db;
+  --color-chart-2: #6ecaba;
+  --color-chart-3: #e9b974;
+  --color-chart-4: #f08b7f;
+  --color-chart-5: #3182c4;
+  --color-chart-6: #5bccfa;
+
+  /* Forma */
+  --radius-card: 20px;
+  --radius-field: 12px;
+  --shadow-card: 0 4px 24px rgba(31, 35, 48, 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    overflow-x: clip;
+    background-color: var(--color-app);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-50);
+    color: var(--color-primary-600);
+  }
+}
+
+@layer components {
+  .sheet-overlay[data-state="open"] {
+    animation: fade-in 180ms ease-out;
+  }
+
+  .sheet-left[data-state="open"] {
+    animation: sheet-left-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sheet-bottom[data-state="open"] {
+    animation: sheet-bottom-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-left-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-bottom-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

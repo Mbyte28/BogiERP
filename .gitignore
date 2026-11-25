@@ -1,0 +1,49 @@
+# =========================================================
+#  Secretos y datos locales
+# =========================================================
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Llaves JWT locales (solo se conserva la carpeta)
+backend/keys/*
+!backend/keys/.gitkeep
+
+# Archivos subidos en local
+uploads/
+backend/uploads/
+
+# =========================================================
+#  Dependencias y compilados
+# =========================================================
+node_modules/
+dist/
+target/
+coverage/
+*.tsbuildinfo
+
+# =========================================================
+#  IDE / Sistema operativo
+# =========================================================
+.opencode/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================================================
+#  Logs
+# =========================================================
+*.log
+npm-debug.log*
+
+# =========================================================
+#  Material de referencia: NO se sube al repositorio
+# =========================================================
+_referencia/
+STACK_Y_ARQUITECTURA.md
+init_database.sql
+diseno_referencia.png

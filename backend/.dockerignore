@@ -1,0 +1,8 @@
+target/
+uploads/
+keys/
+.mvn/
+mvnw
+mvnw.cmd
+*.pem
+**/.git

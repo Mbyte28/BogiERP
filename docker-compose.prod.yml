@@ -1,0 +1,17 @@
+# Overrides para producción (VPS Hetzner).
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Solo el contenedor frontend queda expuesto al exterior. La base de datos
+# deja de publicar el puerto 5432 y el acceso queda por la red interna.
+
+services:
+  db:
+    ports: !reset []
+
+  backend:
+    environment:
+      QUARKUS_PROFILE: prod
+
+  frontend:
+    ports:
+      - "80:80"
