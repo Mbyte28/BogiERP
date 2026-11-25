@@ -1,26 +1,21 @@
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-import { MODULOS, type ModuloKey } from "@/lib/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { modulosVisibles } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { SidebarNavItem } from "./NavItem";
 
-const CLAVES_PRINCIPALES: readonly ModuloKey[] = [
-  "DASHBOARD",
-  "VENTA",
-  "INVENTARIO",
-  "CAJA",
-];
-
-const principales = MODULOS.filter((modulo) =>
-  CLAVES_PRINCIPALES.includes(modulo.key),
-);
-const extras = MODULOS.filter((modulo) => !CLAVES_PRINCIPALES.includes(modulo.key));
+const CLAVES_PRINCIPALES = new Set(["DASHBOARD", "VENTA", "INVENTARIO", "CAJA"]);
 
 export function BottomNav() {
+  const { sesion } = useAuth();
   const { pathname } = useLocation();
   const [masAbierto, setMasAbierto] = useState(false);
+  const modulos = modulosVisibles(sesion);
+  const principales = modulos.filter((modulo) => CLAVES_PRINCIPALES.has(modulo.key));
+  const extras = modulos.filter((modulo) => !CLAVES_PRINCIPALES.has(modulo.key));
   const extrasActivo = extras.some(
     (modulo) => pathname === modulo.ruta || pathname.startsWith(`${modulo.ruta}/`),
   );
