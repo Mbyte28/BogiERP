@@ -162,6 +162,7 @@ departamentos. El backend se encarga de mover stock, registrar
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Usuario principal inicial (obligatorio en producción) |
 | `JWT_KEYS_DIR` | Carpeta local con `privateKey.pem` y `publicKey.pem` |
 | `APP_AUTH_COOKIE_SECURE` | `true` solo con HTTPS; por defecto `false` para desarrollo local |
+| `APP_UPLOADS_DIR` | Carpeta de imágenes compartida con Nginx (en contenedores `/data/uploads`) |
 
 `.env` y las llaves `*.pem` no se versionan (excepto las llaves de prueba, que
 son propias de los tests y viven en `backend/src/test/resources`).
@@ -200,14 +201,49 @@ muestran "Acceso denegado" y un 401 global devuelve al usuario al login.
 |---|---|---|---|
 | Base / layout / tema | estructura | estructura | Listo |
 | Cuentas y permisos (login JWT) | implementado | implementado | Listo |
-| Inventario | pendiente | pendiente | Pendiente |
+| Inventario | implementado | implementado | Listo |
 | Caja y registrar venta | pendiente | pendiente | Pendiente |
 | Resumen de caja e historial | pendiente | pendiente | Pendiente |
 | Clientes y fiados | pendiente | pendiente | Pendiente |
 | Dashboard | pendiente | pendiente | Pendiente |
 
 Cada módulo se desarrolla en una rama `feature/<módulo>`, se prueba de punta a
-punta y se integra a `develop`.
+punta y se integra a `develop` mediante pull request.
+
+---
+
+## Inventario
+
+Categorías, productos, stock, costos, imágenes y mermas. Todos los endpoints
+requieren autenticación y el módulo `INVENTARIO`.
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET/POST` | `/api/categorias` | Listar y crear categorías |
+| `PUT/DELETE` | `/api/categorias/{id}` | Renombrar y eliminar categoría |
+| `GET` | `/api/productos?page=&size=&q=&categoriaId=` | Productos paginados y filtrados |
+| `POST/PUT` | `/api/productos` y `/api/productos/{id}` | Crear y editar producto |
+| `PATCH` | `/api/productos/{id}/stock` | Ajustar stock (genera `movimiento_stock`) |
+| `PATCH` | `/api/productos/{id}/costo` | Cambiar costo; `null` lo deja sin costo |
+| `POST` | `/api/productos/{id}/imagen` | Subir imagen (multipart, JPG/PNG/WebP ≤ 5 MB) |
+| `GET` | `/api/uploads/{nombre}` | Descargar imagen en desarrollo (en producción la sirve Nginx) |
+| `GET/POST` | `/api/mermas?mes=2026-11` | Listar mermas del mes y registrar una |
+
+Reglas que aplica la base de datos y el backend:
+
+- Los productos por **unidad** solo admiten stock entero; los de **kilo**
+  aceptan hasta tres decimales. El stock nunca baja de cero.
+- Todo cambio de stock se registra en `movimiento_stock` (`INGRESO`, `AJUSTE`
+  o `MERMA`), incluido el stock inicial.
+- Cada cambio de costo se guarda en `producto_costo_historial`.
+- Las mermas descuentan stock y congelan el costo del momento en
+  `fn_merma_snapshot`, para no alterar el historial.
+- Las imágenes se guardan con un nombre único y se redimensionan a un máximo
+  de 800 px (JPG/PNG); WebP se guarda sin redimensionar.
+
+La interfaz ofrece filtros por búsqueda y categoría, tabla en escritorio y
+tarjetas en móvil, acciones rápidas de stock/costo/imagen/merma, alertas de
+productos sin costo o por vencer y panel mensual de mermas.
 
 ---
 
@@ -239,4 +275,5 @@ productos) y activar los snapshots del proveedor.
 - El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
   inferior en teléfono.
 - Las pantallas de los módulos de operación siguen siendo marcadores de
-  posición hasta que se implemente cada funcionalidad; Cuentas ya está completa.
+  posición hasta que se implemente cada funcionalidad; Cuentas e Inventario ya
+  están completos.
