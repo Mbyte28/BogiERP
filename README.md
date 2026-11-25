@@ -202,7 +202,7 @@ muestran "Acceso denegado" y un 401 global devuelve al usuario al login.
 | Base / layout / tema | estructura | estructura | Listo |
 | Cuentas y permisos (login JWT) | implementado | implementado | Listo |
 | Inventario | implementado | implementado | Listo |
-| Caja y registrar venta | pendiente | pendiente | Pendiente |
+| Caja y registrar venta | implementado | implementado | Listo |
 | Resumen de caja e historial | pendiente | pendiente | Pendiente |
 | Clientes y fiados | pendiente | pendiente | Pendiente |
 | Dashboard | pendiente | pendiente | Pendiente |
@@ -247,6 +247,44 @@ productos sin costo o por vencer y panel mensual de mermas.
 
 ---
 
+## Caja y registrar venta
+
+Solo puede existir una caja abierta y no se puede vender con la caja cerrada.
+Todos los endpoints requieren autenticación y su módulo (`VENTA` o `CAJA`).
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/catalogo?page=&size=25&q=&categoriaId=` | Catálogo paginado, más vendidos primero |
+| `POST` | `/api/ventas` | Registrar venta, descontar stock y guardar movimientos |
+| `GET` | `/api/caja/actual` | Estado de la caja (`{ abierta, caja }`) |
+| `POST` | `/api/caja/abrir` y `/api/caja/cerrar` | Abrir o cerrar la caja actual |
+| `GET` | `/api/caja/{id}/resumen` | Totales y productos vendidos (vista "General") |
+| `GET` | `/api/caja/{id}/ventas` | Detalle por venta (vista "Por venta") |
+
+El cliente envía solo `productoId`, `cantidad`, el método de pago y los montos
+necesarios: **nunca envía totales ni precios**. El backend recalcula cada
+subtotal desde la base, valida pago y stock, y guarda venta, ítems, descuento de
+stock y `movimiento_stock` en una sola transacción. La base congela nombre,
+tipo, precio y costo de cada línea con `fn_linea_snapshot`, de modo que cambiar
+un costo después no altera ventas pasadas.
+
+Reglas de pago:
+
+- **Efectivo:** el recibido debe cubrir el total; el vuelto es la diferencia.
+- **Transferencia:** requiere Yape o Plin y todo el monto se registra como
+  transferencia, sin vuelto.
+- **Ambos:** el efectivo debe ser mayor que cero y menor que el total; el resto
+  se registra como transferencia con Yape o Plin, sin vuelto.
+
+El catálogo ordena primero los productos más vendidos (según `venta_item`), con
+búsqueda global y filtro por categoría paginados de 25 en 25. En la interfaz, el
+ticket calcula total y vuelto en tiempo real; en móvil se abre como bottom sheet
+con una barra inferior fija, y el pago con transferencia pasa por el modal
+Yape/Plin antes de la confirmación de "Venta registrada". La pantalla de caja
+muestra KPIs, alerta de productos sin costo y pestañas General / Por venta.
+
+---
+
 ## Producción (Hetzner)
 
 ```bash
@@ -274,6 +312,6 @@ productos) y activar los snapshots del proveedor.
   Sans) está definido como tokens de Tailwind v4 en `frontend/src/index.css`.
 - El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
   inferior en teléfono.
-- Las pantallas de los módulos de operación siguen siendo marcadores de
-  posición hasta que se implemente cada funcionalidad; Cuentas e Inventario ya
-  están completos.
+- Los módulos de operación se implementan uno por uno; ya están completos
+  Cuentas, Inventario, Venta y Caja. Clientes, Historial y Dashboard siguen en
+  marcha.
