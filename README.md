@@ -87,6 +87,12 @@ cd backend
 ./mvnw package -DskipTests
 ```
 
+Los tests del backend usan Dev Services: Testcontainers levanta un PostgreSQL
+efímero y aplica las migraciones de Flyway. Si la imagen por defecto no está
+disponible, se puede cambiar con `TEST_DB_IMAGE=postgres:17-alpine`; en equipos
+donde no se pueda descargar Ryuk, `TESTCONTAINERS_RYUK_DISABLED=true` permite
+ejecutar la suite igualmente.
+
 ---
 
 ## Estructura
@@ -111,7 +117,8 @@ cd backend
 │   └── pom.xml
 ├── frontend/
 │   ├── src/
-│   │   ├── components/        # layout y UI compartida
+│   │   ├── components/        # layout, guardias y UI compartida
+│   │   ├── contexts/          # sesión JWT del usuario
 │   │   ├── lib/               # api, navegación y utilidades
 │   │   ├── modules/           # una carpeta por módulo
 │   │   ├── App.tsx
@@ -152,10 +159,38 @@ departamentos. El backend se encarga de mover stock, registrar
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credenciales de PostgreSQL |
 | `POSTGRES_PORT` | Puerto local de la base (por defecto `5432`) |
 | `TZ` | Zona horaria de los contenedores (`America/Lima`) |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Usuario principal inicial |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Usuario principal inicial (obligatorio en producción) |
 | `JWT_KEYS_DIR` | Carpeta local con `privateKey.pem` y `publicKey.pem` |
+| `APP_AUTH_COOKIE_SECURE` | `true` solo con HTTPS; por defecto `false` para desarrollo local |
 
-`.env` y las llaves `*.pem` no se versionan.
+`.env` y las llaves `*.pem` no se versionan (excepto las llaves de prueba, que
+son propias de los tests y viven en `backend/src/test/resources`).
+
+---
+
+## Cuentas y permisos
+
+El acceso se resuelve con un JWT firmado guardado en la cookie HttpOnly
+`access_token` (`SameSite=Lax`, 8 horas de vigencia). El frontend envía las
+credenciales en todas las peticiones (`credentials: include`) y el backend
+valida el token y el módulo en **cada endpoint protegido** mediante
+`@RequiereModulo`.
+
+- `POST /api/auth/login` — devuelve la sesión y escribe la cookie.
+- `GET /api/auth/me` — sesión actual.
+- `POST /api/auth/logout` — expira la cookie.
+- `GET/POST /api/usuarios` y `GET/POST /api/roles` — administración (solo principal).
+- `PUT /api/roles/{id}/modulos` — reemplaza los permisos del rol.
+
+Los módulos son `INVENTARIO`, `CLIENTES`, `VENTA`, `CAJA`, `HISTORIAL`,
+`CUENTAS` y `DASHBOARD`. `CUENTAS` pertenece únicamente al rol principal: el
+backend rechaza asignarlo a cualquier otro rol y la interfaz oculta esa opción.
+En el primer arranque se crea el usuario principal solo si la tabla `usuario`
+está vacía; en desarrollo la contraseña es `admin123` y en producción se exige
+`ADMIN_PASSWORD`.
+
+La navegación se filtra según los módulos de la sesión: las rutas sin permiso
+muestran "Acceso denegado" y un 401 global devuelve al usuario al login.
 
 ---
 
@@ -164,7 +199,7 @@ departamentos. El backend se encarga de mover stock, registrar
 | Módulo | Backend | Frontend | Estado |
 |---|---|---|---|
 | Base / layout / tema | estructura | estructura | Listo |
-| Cuentas y permisos (login JWT) | pendiente | pendiente | Pendiente |
+| Cuentas y permisos (login JWT) | implementado | implementado | Listo |
 | Inventario | pendiente | pendiente | Pendiente |
 | Caja y registrar venta | pendiente | pendiente | Pendiente |
 | Resumen de caja e historial | pendiente | pendiente | Pendiente |
@@ -203,5 +238,5 @@ productos) y activar los snapshots del proveedor.
   Sans) está definido como tokens de Tailwind v4 en `frontend/src/index.css`.
 - El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
   inferior en teléfono.
-- Las pantallas de módulo son marcadores de posición hasta que se implemente
-  cada funcionalidad.
+- Las pantallas de los módulos de operación siguen siendo marcadores de
+  posición hasta que se implemente cada funcionalidad; Cuentas ya está completa.

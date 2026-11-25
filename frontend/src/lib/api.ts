@@ -1,3 +1,5 @@
+import { EVENTO_NO_AUTORIZADO } from "./eventos";
+
 const API_BASE = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
@@ -73,6 +75,9 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
 
   if (!response.ok) {
     const detalle = await leerCuerpo(response);
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      window.dispatchEvent(new Event(EVENTO_NO_AUTORIZADO));
+    }
     throw new ApiError(response.status, mensajeDeError(detalle, response.status), detalle);
   }
 

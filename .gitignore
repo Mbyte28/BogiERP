@@ -10,6 +10,9 @@
 backend/keys/*
 !backend/keys/.gitkeep
 
+# Llaves JWT de prueba: son propias de los tests y sí se versionan
+!backend/src/test/resources/*-test.pem
+
 # Archivos subidos en local
 uploads/
 backend/uploads/
@@ -33,6 +36,9 @@ coverage/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Salidas generadas por /graphify (se consultan en local)
+graphify-out/
 
 # =========================================================
 #  Logs

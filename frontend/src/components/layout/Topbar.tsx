@@ -1,19 +1,31 @@
 import { useState } from "react";
-import { Menu } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import { MODULOS, moduloPorRuta } from "@/lib/navigation";
+import { LogOut, Menu } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
+import { modulosVisibles } from "@/lib/auth";
+import { moduloPorRuta } from "@/lib/navigation";
 import { Brand } from "./Brand";
 import { SidebarNavItem } from "./NavItem";
 
 export function Topbar() {
+  const { sesion, cerrarSesion } = useAuth();
   const { pathname } = useLocation();
-  const modulo = moduloPorRuta(pathname);
+  const navegar = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const modulo = moduloPorRuta(pathname);
+  const modulos = modulosVisibles(sesion);
 
   const titulo = modulo?.nombre ?? "Página no encontrada";
   const descripcion =
     modulo?.descripcion ?? "Revisa la dirección o vuelve al dashboard.";
+  const iniciales = sesion?.username.slice(0, 2).toUpperCase() ?? "--";
+
+  async function alCerrarSesion() {
+    await cerrarSesion();
+    navegar("/login", { replace: true });
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-line/60 bg-app/85 backdrop-blur-md">
@@ -34,17 +46,29 @@ export function Topbar() {
           <p className="hidden truncate text-xs text-ink-soft sm:block">{descripcion}</p>
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold leading-tight text-ink">Administrador</p>
-            <p className="text-[11px] text-ink-soft">Rol principal</p>
+            <p className="text-sm font-semibold leading-tight text-ink">
+              {sesion?.username ?? "Usuario"}
+            </p>
+            <p className="text-[11px] text-ink-soft">{sesion?.rol ?? ""}</p>
           </div>
           <div
             className="flex size-10 items-center justify-center rounded-full bg-primary-50 text-sm font-bold text-primary-600"
             aria-hidden="true"
           >
-            AD
+            {iniciales}
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={alCerrarSesion}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <LogOut />
+          </Button>
         </div>
       </div>
 
@@ -54,7 +78,7 @@ export function Topbar() {
             <Brand />
           </div>
           <nav className="mt-8 flex flex-col gap-1" aria-label="Menú principal móvil">
-            {MODULOS.map((item) => (
+            {modulos.map((item) => (
               <SidebarNavItem
                 key={item.key}
                 modulo={item}
@@ -62,9 +86,20 @@ export function Topbar() {
               />
             ))}
           </nav>
-          <p className="mt-auto px-3 text-[11px] leading-relaxed text-ink-soft">
-            Versión 0.1.0 · Estructura inicial
-          </p>
+          <div className="mt-auto pt-4">
+            <p className="px-3 text-[11px] leading-relaxed text-ink-soft">
+              {sesion?.username} · {sesion?.rol}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full"
+              onClick={alCerrarSesion}
+            >
+              <LogOut />
+              Cerrar sesión
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     </header>
