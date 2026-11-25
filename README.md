@@ -203,7 +203,7 @@ muestran "Acceso denegado" y un 401 global devuelve al usuario al login.
 | Cuentas y permisos (login JWT) | implementado | implementado | Listo |
 | Inventario | implementado | implementado | Listo |
 | Caja y registrar venta | implementado | implementado | Listo |
-| Resumen de caja e historial | pendiente | pendiente | Pendiente |
+| Resumen de caja e historial | implementado | implementado | Listo |
 | Clientes y fiados | pendiente | pendiente | Pendiente |
 | Dashboard | pendiente | pendiente | Pendiente |
 
@@ -285,6 +285,25 @@ muestra KPIs, alerta de productos sin costo y pestañas General / Por venta.
 
 ---
 
+## Historial de cajas
+
+Consulta de cajas registradas, de la más reciente a la más antigua. Los
+endpoints requieren autenticación y el módulo `HISTORIAL`.
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/historial/cajas?page=&size=30` | Cajas paginadas (`size` de 1 a 100) |
+| `GET` | `/api/historial/cajas/{id}` | `{ resumen, ventas }` de una caja |
+
+El detalle reutiliza los mismos servicios de caja que la pantalla de caja
+actual, así que General y Por venta muestran exactamente los mismos datos. Una
+caja inexistente devuelve 404 y una paginación inválida devuelve 400, ambos con
+mensaje en español. La interfaz lista cada caja con su estado, total y ventas,
+y permite paginar o abrir su detalle; el componente de detalle es compartido
+con el módulo de caja.
+
+---
+
 ## Producción (Hetzner)
 
 ```bash
@@ -313,5 +332,5 @@ productos) y activar los snapshots del proveedor.
 - El layout es responsive: sidebar fija en escritorio, drawer en tablet y barra
   inferior en teléfono.
 - Los módulos de operación se implementan uno por uno; ya están completos
-  Cuentas, Inventario, Venta y Caja. Clientes, Historial y Dashboard siguen en
+  Cuentas, Inventario, Venta, Caja e Historial. Clientes y Dashboard siguen en
   marcha.
