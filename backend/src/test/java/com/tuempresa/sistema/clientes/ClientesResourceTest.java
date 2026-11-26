@@ -407,7 +407,7 @@ class ClientesResourceTest {
                 .post("/fiados")
                 .then()
                 .statusCode(404)
-                .body("message", containsString("Departamento no encontrado"));
+                .body("message", containsString("El departamento ya no existe"));
 
         given()
                 .cookie(COOKIE, token)

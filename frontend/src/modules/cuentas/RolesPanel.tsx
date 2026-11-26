@@ -154,7 +154,7 @@ function EditorRol({ rol }: { rol: Rol }) {
         className="flex min-h-11 w-full flex-wrap items-center gap-2 rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
       >
         <span className="text-sm font-semibold text-ink">{rol.nombre}</span>
-        {rol.esSistema && <Badge variant="outline">Del sistema</Badge>}
+        {rol.esSistema && <Badge variant="outline">Por defecto</Badge>}
         <ChevronDown
           size={20}
           strokeWidth={1.8}

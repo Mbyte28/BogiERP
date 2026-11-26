@@ -29,31 +29,21 @@ export default function HistorialPage() {
     const error = detalle.error instanceof Error ? detalle.error.message : null;
     return (
       <div className="space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <button
-              type="button"
-              onClick={() => setSeleccionada(null)}
-              className="flex min-h-11 items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-500"
-            >
-              <ArrowLeft />
-              Volver al historial
-            </button>
-            <h2 className="mt-2 text-lg font-bold tracking-tight text-ink sm:text-xl">
-              Caja #{seleccionada}
-            </h2>
-            <p className="mt-1 text-sm text-ink-soft">
-              Abierta el {fechaHora(detalle.data?.resumen.abiertaEn)}
-            </p>
-          </div>
-          <Button
+        <div>
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void detalle.refetch()}
+            onClick={() => setSeleccionada(null)}
+            className="flex min-h-11 items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-500"
           >
-            Actualizar
-          </Button>
+            <ArrowLeft />
+            Volver al historial
+          </button>
+          <h2 className="mt-2 text-lg font-bold tracking-tight text-ink sm:text-xl">
+            Caja #{seleccionada}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Abierta el {fechaHora(detalle.data?.resumen.abiertaEn)} · Se actualiza automáticamente.
+          </p>
         </div>
 
         {error && (

@@ -142,17 +142,15 @@ function VistaGeneral({ productos }: { productos: ProductoCaja[] }) {
             <p className="truncate text-sm font-semibold text-ink">
               {producto.nombreProducto}
             </p>
-            <p className="mt-0.5 text-xs text-ink-soft">
-              {producto.tipoVenta === "KILO" ? "Kilo" : "Unidad"} ·{" "}
-              {dinero(producto.ventasTotal)} vendidos
-            </p>
           </div>
           {producto.tieneItemsSinCosto && <Badge variant="warning">Sin costo</Badge>}
-          <div className="text-right">
-            <p className="text-sm font-bold text-ink">
-              {cantidad(producto.cantidadTotal)} {producto.tipoVenta === "KILO" ? "kg" : "und"}
-            </p>
-            <p className="text-xs text-ink-soft">Ganancia {dinero(producto.ganancia)}</p>
+          <div className="flex shrink-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 text-right sm:flex-nowrap">
+            <span className="whitespace-nowrap text-sm font-bold text-ink">
+              {cantidad(producto.cantidadTotal)} {producto.tipoVenta === "KILO" ? "kg" : "uni."}
+            </span>
+            <span className="whitespace-nowrap text-sm font-semibold text-ink-soft">
+              {dinero(producto.ventasTotal)}
+            </span>
           </div>
         </li>
       ))}
@@ -200,7 +198,7 @@ function VistaVentas({
             {venta.items.map((item) => (
               <li key={item.id} className="flex justify-between gap-3">
                 <span className="min-w-0 truncate">
-                  {cantidad(item.cantidad)} {item.tipoVenta === "KILO" ? "kg" : "und"} ·{" "}
+                  {cantidad(item.cantidad)} {item.tipoVenta === "KILO" ? "kg" : "uni."} ·{" "}
                   {item.nombreProducto}
                 </span>
                 <span className="shrink-0 font-semibold text-ink">{dinero(item.subtotal)}</span>

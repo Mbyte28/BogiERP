@@ -53,7 +53,7 @@ public class FiadoService {
     public List<FiadoResponse> registrar(CrearFiadoRequest solicitud) {
         Departamento departamento = departamentos.findById(solicitud.departamentoId());
         if (departamento == null) {
-            throw Errores.notFound("Departamento no encontrado");
+            throw Errores.notFound("El departamento ya no existe; actualiza la lista y elige otro.");
         }
         if (solicitud.items() == null || solicitud.items().isEmpty()) {
             throw Errores.badRequest("Agrega al menos un producto al fiado");
@@ -119,7 +119,7 @@ public class FiadoService {
     public List<FiadoResponse> porDepartamento(Long departamentoId) {
         Departamento departamento = departamentos.findById(departamentoId);
         if (departamento == null) {
-            throw Errores.notFound("Departamento no encontrado");
+            throw Errores.notFound("El departamento ya no existe; actualiza la lista y elige otro.");
         }
         return fiados.listarPorDepartamento(departamentoId).stream()
                 .map(this::aRespuesta)

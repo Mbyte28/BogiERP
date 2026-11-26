@@ -16,7 +16,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import {
@@ -217,15 +216,6 @@ export default function DashboardPage() {
   const error =
     mensuales.error ?? resumen.error ?? detalle.error ?? menosVendidos.error ?? null;
 
-  function actualizar() {
-    void Promise.all([
-      mensuales.refetch(),
-      resumen.refetch(),
-      detalle.refetch(),
-      menosVendidos.refetch(),
-    ]);
-  }
-
   function seleccionarMes(mes: string | undefined) {
     if (mes) setMesSeleccionado(mes);
   }
@@ -236,7 +226,7 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">Dashboard</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Ventas, ganancia, merma y productos destacados de la tienda.
+            Ventas, ganancia, merma y productos destacados de la tienda. Se actualiza automáticamente.
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
@@ -266,9 +256,6 @@ export default function DashboardPage() {
               etiqueta: etiquetaMesCompleta(punto.mes),
             }))}
           />
-          <Button type="button" variant="outline" className="h-11" onClick={actualizar}>
-            Actualizar
-          </Button>
         </div>
       </div>
 

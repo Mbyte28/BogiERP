@@ -84,7 +84,7 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
         <SheetContent
           side="bottom"
           title="Gestionar categorías"
-          className="sm:inset-y-0 sm:bottom-auto sm:left-auto sm:right-0 sm:h-dvh sm:max-h-none sm:w-[min(100%,440px)] sm:rounded-l-3xl sm:rounded-t-none"
+          className="sm:inset-y-0 sm:bottom-auto sm:left-auto sm:right-0 sm:h-dvh sm:max-h-none sm:w-[min(100%,40rem)] sm:rounded-l-3xl sm:rounded-t-none"
         >
           <div className="flex min-h-0 flex-1 flex-col gap-5">
             <div>
@@ -108,7 +108,7 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
               </Campo>
               <div className="min-w-0 sm:col-span-2">
                 <p className="text-xs font-semibold text-ink">Icono</p>
-                <div className="mt-2 grid max-h-44 grid-cols-5 gap-2 overflow-y-auto rounded-field border border-line bg-app p-2 sm:grid-cols-8">
+                <div className="mt-2 grid max-h-64 grid-cols-6 gap-2 overflow-y-auto rounded-field border border-line bg-app p-2 sm:max-h-none sm:grid-cols-10">
                   {ICONOS_CATEGORIA.map(({ clave, etiqueta, Icono }) => {
                     const activo = icono === clave;
                     return (
@@ -120,16 +120,13 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
                         title={etiqueta}
                         onClick={() => setIcono(clave)}
                         className={cn(
-                          "flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 transition-colors",
+                          "flex min-h-12 items-center justify-center rounded-xl border p-2 transition-colors",
                           activo
                             ? "border-primary-500 bg-primary-50 text-primary-600"
                             : "border-transparent bg-surface text-ink-soft hover:bg-white hover:text-ink",
                         )}
                       >
-                        <Icono size={18} strokeWidth={1.8} aria-hidden="true" />
-                        <span className="w-full truncate text-center text-[10px] font-medium">
-                          {etiqueta}
-                        </span>
+                        <Icono size={24} strokeWidth={1.8} aria-hidden="true" />
                       </button>
                     );
                   })}
@@ -160,8 +157,8 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
             <ul className="min-h-0 flex-1 divide-y divide-line/70 overflow-y-auto">
               {categorias.map((categoria) => (
                 <li key={categoria.id} className="flex items-center gap-3 py-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
-                    <IconoCategoria nombre={categoria.icono} />
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+                    <IconoCategoria nombre={categoria.icono} size={22} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-ink">{categoria.nombre}</p>

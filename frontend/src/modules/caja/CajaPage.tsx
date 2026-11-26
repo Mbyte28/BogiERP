@@ -7,6 +7,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cajaApi } from "@/lib/caja";
 import { hora } from "@/lib/fechas";
 import { dinero } from "@/lib/inventario";
+import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { DetalleCaja } from "./DetalleCaja";
 
 export default function CajaPage() {
@@ -14,7 +15,11 @@ export default function CajaPage() {
   const [confirmarCierre, setConfirmarCierre] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
-  const caja = useQuery({ queryKey: ["caja", "actual"], queryFn: cajaApi.actual });
+  const caja = useQuery({
+    queryKey: ["caja", "actual"],
+    queryFn: cajaApi.actual,
+    refetchInterval: REFRESCO_RAPIDO,
+  });
   const id = caja.data?.caja?.cajaId ?? null;
   const abierta = caja.data?.abierta === true;
 
@@ -22,11 +27,13 @@ export default function CajaPage() {
     queryKey: ["caja", id, "resumen"],
     queryFn: () => cajaApi.resumen(id as number),
     enabled: abierta && id !== null,
+    refetchInterval: REFRESCO_RAPIDO,
   });
   const ventas = useQuery({
     queryKey: ["caja", id, "ventas"],
     queryFn: () => cajaApi.ventas(id as number),
     enabled: abierta && id !== null,
+    refetchInterval: REFRESCO_RAPIDO,
   });
 
   const abrir = useMutation({
@@ -47,23 +54,13 @@ export default function CajaPage() {
     onError: (fallo: Error) => setMensaje(fallo.message),
   });
 
-  function recargar() {
-    setMensaje(null);
-    void cliente.invalidateQueries({ queryKey: ["caja"] });
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">Caja</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Resumen de la caja actual y detalle de cada venta.
-          </p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={recargar}>
-          Actualizar
-        </Button>
+      <div>
+        <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">Caja</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Resumen de la caja actual y detalle de cada venta. Se actualiza automáticamente.
+        </p>
       </div>
 
       {mensaje && (

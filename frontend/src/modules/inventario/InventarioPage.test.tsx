@@ -245,8 +245,12 @@ describe("InventarioPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Gestionar categorías" }));
 
     const dialogo = await screen.findByRole("dialog", { name: "Gestionar categorías" });
-    expect(within(dialogo).getByRole("button", { name: "Icono Carne" })).toBeInTheDocument();
+    const iconoCarne = within(dialogo).getByRole("button", { name: "Icono Carne" });
+    expect(iconoCarne).toBeInTheDocument();
     expect(within(dialogo).getByRole("button", { name: "Icono Gaseosa" })).toBeInTheDocument();
+    expect(dialogo).toHaveClass("sm:w-[min(100%,40rem)]");
+    expect(iconoCarne).toHaveTextContent("");
+    expect(iconoCarne.querySelector("svg")).toHaveAttribute("width", "24");
 
     fireEvent.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
     await waitFor(() => {

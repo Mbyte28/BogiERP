@@ -69,7 +69,7 @@ function respuesta(datos: unknown, status = 200) {
   });
 }
 
-function simularApi(caja: CajaActual = cajaAbierta) {
+function simularApi(caja: CajaActual = cajaAbierta, ventaNoDisponible = false) {
   const peticiones = vi.fn<(url: string, init?: RequestInit) => void>();
   vi.stubGlobal(
     "fetch",
@@ -85,6 +85,9 @@ function simularApi(caja: CajaActual = cajaAbierta) {
       if (url.includes("/catalogo")) return respuesta(catalogo);
       if (url.includes("/productos")) return respuesta({ items: [], total: 0, page: 0, size: 25 });
       if (url.includes("/ventas") && metodo === "POST") {
+        if (ventaNoDisponible) {
+          return respuesta({ message: "Producto no encontrado" }, 404);
+        }
         const cuerpo = JSON.parse(String(init?.body)) as {
           items: { cantidad: number }[];
           metodoPago: string;
@@ -166,6 +169,22 @@ describe("VentaPage", () => {
     expect(cuerpo.metodoPago).toBe("EFECTIVO");
     expect(cuerpo.efectivoRecibido).toBe(20);
     expect(cuerpo.total).toBeUndefined();
+  });
+
+  it("refresca catálogo y caja si el producto fue borrado desde otro dispositivo", async () => {
+    const peticiones = simularApi(cajaAbierta, true);
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
+    fireEvent.change(screen.getByLabelText("Recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Finalizar venta" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Producto no encontrado");
+    await waitFor(() => {
+      const consultasCatalogo = peticiones.mock.calls.filter(([url]) => url.includes("/catalogo"));
+      expect(consultasCatalogo.length).toBeGreaterThan(1);
+    });
   });
 
   it("pide Yape o Plin antes de registrar una transferencia", async () => {

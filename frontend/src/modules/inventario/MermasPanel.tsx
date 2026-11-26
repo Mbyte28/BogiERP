@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cantidad, dinero, fecha, inventarioApi, type Producto } from "@/lib/inventario";
+import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { MermaForm } from "./MermaForm";
 
 function mesActual(): string {
@@ -24,10 +25,12 @@ export function MermasPanel() {
   const mermas = useQuery({
     queryKey: ["mermas", mes],
     queryFn: () => inventarioApi.mermas(mes),
+    refetchInterval: REFRESCO_RAPIDO,
   });
   const productos = useQuery({
     queryKey: ["productos-mermas"],
     queryFn: () => inventarioApi.productos({ size: 100 }),
+    refetchInterval: REFRESCO_RAPIDO,
   });
 
   const lista = mermas.data ?? [];

@@ -101,12 +101,14 @@ function simularApi({
   fallar = false,
   bloquearEdicion = false,
   torresIniciales = 1,
+  departamentoEliminado = false,
 }: {
   configurado?: boolean;
   conFiado?: boolean;
   fallar?: boolean;
   bloquearEdicion?: boolean;
   torresIniciales?: number;
+  departamentoEliminado?: boolean;
 } = {}) {
   const estado = {
     configurado,
@@ -177,6 +179,12 @@ function simularApi({
         return respuesta(estado.fiados.filter((fiado) => fiado.departamentoId === 1));
       }
       if (url.endsWith("/fiados") && metodo === "POST") {
+        if (departamentoEliminado) {
+          return respuesta(
+            { message: "El departamento ya no existe; actualiza la lista y elige otro." },
+            404,
+          );
+        }
         const datos = JSON.parse(String(init?.body)) as SolicitudFiado;
         const creados = datos.items.map((item, indice) => {
           const producto = productos.find((p) => p.id === item.productoId)!;
@@ -323,6 +331,26 @@ describe("ClientesPage", () => {
         url.includes("/fiados/1/pagar") && init?.method === "PATCH",
       ),
     ).toBe(true);
+  });
+
+  it("vuelve al inicio si el departamento fue borrado desde otro dispositivo", async () => {
+    simularApi({ departamentoEliminado: true });
+    renderizar();
+
+    fireEvent.click(await navegarAlDepartamento());
+    const detalle = await screen.findByRole("dialog", { name: "Torre 1 Departamento 101" });
+    fireEvent.click(within(detalle).getByRole("button", { name: "Registrar fiado" }));
+    const formulario = await screen.findByRole("dialog", { name: "Registrar fiado" });
+    await within(formulario).findByRole("option", { name: /Pan/ });
+    fireEvent.change(within(formulario).getByLabelText("Producto"), { target: { value: "10" } });
+    fireEvent.change(within(formulario).getByLabelText("Cantidad"), { target: { value: "1" } });
+    fireEvent.click(within(formulario).getByRole("button", { name: "Agregar producto" }));
+    expect(await within(formulario).findByText(/Pan · 1/)).toBeInTheDocument();
+    fireEvent.click(within(formulario).getByRole("button", { name: "Guardar fiado" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("ya no existe");
+    expect(screen.queryByRole("dialog", { name: "Registrar fiado" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Ver torre 1" })).toBeInTheDocument();
   });
 
   it("revisa las deudas agrupadas y permite pagar desde el panel", async () => {

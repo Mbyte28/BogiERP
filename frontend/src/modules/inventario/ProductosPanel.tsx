@@ -23,6 +23,7 @@ import {
   urlImagen,
   type Producto,
 } from "@/lib/inventario";
+import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { CategoriasPanel } from "./CategoriasPanel";
 import { CostoForm } from "./CostoForm";
 import { IconoCategoria } from "./IconoCategoria";
@@ -39,7 +40,11 @@ export function ProductosPanel() {
   const [mermaProducto, setMermaProducto] = useState<Producto | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
-  const categorias = useQuery({ queryKey: ["categorias"], queryFn: inventarioApi.categorias });
+  const categorias = useQuery({
+    queryKey: ["categorias"],
+    queryFn: inventarioApi.categorias,
+    refetchInterval: REFRESCO_RAPIDO,
+  });
   const productos = useQuery({
     queryKey: ["productos", busqueda, categoriaId, pagina],
     queryFn: () =>
@@ -49,6 +54,7 @@ export function ProductosPanel() {
         page: pagina,
         size: 25,
       }),
+    refetchInterval: REFRESCO_RAPIDO,
   });
 
   const stock = useMutation({

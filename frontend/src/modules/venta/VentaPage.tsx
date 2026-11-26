@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { ApiError } from "@/lib/api";
 import { cajaApi } from "@/lib/caja";
 import {
   cantidad,
@@ -22,6 +23,7 @@ import {
   inventarioApi,
   urlImagen,
 } from "@/lib/inventario";
+import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { IconoCategoria } from "@/modules/inventario/IconoCategoria";
 import {
   totalTicket,
@@ -57,15 +59,21 @@ export default function VentaPage() {
   const [ventaExitosa, setVentaExitosa] = useState<VentaResponse | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
-  const caja = useQuery({ queryKey: ["caja", "actual"], queryFn: cajaApi.actual });
+  const caja = useQuery({
+    queryKey: ["caja", "actual"],
+    queryFn: cajaApi.actual,
+    refetchInterval: REFRESCO_RAPIDO,
+  });
   const categorias = useQuery({
     queryKey: ["categorias"],
     queryFn: inventarioApi.categorias,
+    refetchInterval: REFRESCO_RAPIDO,
   });
   const catalogo = useQuery({
     queryKey: ["catalogo", busqueda, categoriaId, pagina],
     queryFn: () =>
       ventaApi.catalogo({ q: busqueda, categoriaId, page: pagina, size: TAMANO }),
+    refetchInterval: REFRESCO_RAPIDO,
   });
 
   const registrar = useMutation({
@@ -82,7 +90,16 @@ export default function VentaPage() {
         cliente.invalidateQueries({ queryKey: ["caja"] }),
       ]);
     },
-    onError: (fallo: Error) => setMensaje(fallo.message),
+    onError: (fallo: Error) => {
+      setMensaje(fallo.message);
+      if (fallo instanceof ApiError && (fallo.status === 404 || fallo.status === 409)) {
+        void Promise.all([
+          cliente.invalidateQueries({ queryKey: ["catalogo"] }),
+          cliente.invalidateQueries({ queryKey: ["productos"] }),
+          cliente.invalidateQueries({ queryKey: ["caja"] }),
+        ]);
+      }
+    },
   });
 
   const total = totalTicket(lineas);

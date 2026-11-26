@@ -119,8 +119,20 @@ describe("CajaPage", () => {
     expect(await screen.findByText(/45\.50/)).toBeInTheDocument();
     expect(screen.getByText("Total en caja")).toBeInTheDocument();
     expect(screen.getByText("Ganancia")).toBeInTheDocument();
-    expect(screen.getAllByText("Leche entera").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Sin costo").length).toBeGreaterThan(0);
+
+    const filaLeche = screen.getByText("Leche entera").closest("li") as HTMLElement;
+    expect(filaLeche).toHaveTextContent("2 uni.");
+    expect(filaLeche).toHaveTextContent("S/ 11.00");
+    expect(filaLeche).not.toHaveTextContent("vendidos");
+    expect(filaLeche).not.toHaveTextContent("Unidad");
+    expect(filaLeche).not.toHaveTextContent("Ganancia");
+
+    const filaPollo = screen.getByText("Pollo fresco").closest("li") as HTMLElement;
+    expect(filaPollo).toHaveTextContent("3.5 kg");
+    expect(filaPollo).toHaveTextContent("S/ 42.00");
+
+    expect(screen.queryByRole("button", { name: "Actualizar" })).not.toBeInTheDocument();
   });
 
   it("muestra cada venta con hora, método, billetera y productos", async () => {

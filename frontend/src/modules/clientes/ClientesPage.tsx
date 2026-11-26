@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -50,6 +50,17 @@ type CuadroDatos = {
 
 function mensajeDe(error: unknown, respaldo: string): string {
   return error instanceof Error ? error.message : respaldo;
+}
+
+const AVISO_UBICACION_ELIMINADA =
+  "Esa ubicación ya no existe. Se actualizó el edificio; elígela de nuevo para continuar.";
+
+function esUbicacionEliminada(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 404 &&
+    /departamento|piso/i.test(error.message)
+  );
 }
 
 function Cuadro({ datos }: { datos: CuadroDatos }) {
@@ -143,6 +154,19 @@ export default function ClientesPage() {
   const [lineas, setLineas] = useState<ItemFiado[]>([]);
   const [errorRegistro, setErrorRegistro] = useState<string | null>(null);
 
+  function reiniciarPorCambioExterno() {
+    setHoja(null);
+    setTorre(null);
+    setPiso(null);
+    setLineas([]);
+    setProductoId("");
+    setCantidadTexto("1");
+    setErrorRegistro(null);
+    setErrorAccion(null);
+    setAviso(AVISO_UBICACION_ELIMINADA);
+    void queryClient.invalidateQueries({ queryKey: ["clientes"] });
+  }
+
   const config = useQuery({
     queryKey: ["clientes", "config"],
     queryFn: clientesApi.configuracion,
@@ -184,6 +208,11 @@ export default function ClientesPage() {
     enabled: hoja?.tipo === "registrar",
   });
 
+  useEffect(() => {
+    const error = pisos.error ?? departamentos.error ?? fiados.error;
+    if (esUbicacionEliminada(error)) reiniciarPorCambioExterno();
+  }, [pisos.error, departamentos.error, fiados.error]);
+
   const configurar = useMutation({
     mutationFn: clientesApi.configurar,
     onSuccess: async () => {
@@ -224,6 +253,10 @@ export default function ClientesPage() {
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
     },
     onError: (error) => {
+      if (esUbicacionEliminada(error)) {
+        reiniciarPorCambioExterno();
+        return;
+      }
       setErrorAccion(mensajeDe(error, "No se pudo marcar el fiado como pagado."));
     },
   });
@@ -242,6 +275,10 @@ export default function ClientesPage() {
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
     },
     onError: (error) => {
+      if (esUbicacionEliminada(error)) {
+        reiniciarPorCambioExterno();
+        return;
+      }
       setErrorRegistro(mensajeDe(error, "No se pudo registrar el fiado."));
     },
   });
@@ -506,6 +543,12 @@ export default function ClientesPage() {
           Editar sistema de torres
         </Button>
       </div>
+
+      {aviso && hoja === null && (
+        <p role="status" className="rounded-field bg-success/15 px-4 py-3 text-sm text-[#3d8f83]">
+          {aviso}
+        </p>
+      )}
 
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">

@@ -76,6 +76,8 @@ describe("CuentasPage", () => {
     expect(await screen.findByText("vendedor")).toBeInTheDocument();
     expect(screen.getAllByText("TRABAJADOR").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Principal").length).toBeGreaterThan(0);
+    expect(screen.getByText("Por defecto")).toBeInTheDocument();
+    expect(screen.queryByText("Del sistema")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Ver permisos de TRABAJADOR" }));
     const editor = screen
