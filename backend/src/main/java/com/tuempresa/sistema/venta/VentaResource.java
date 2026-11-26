@@ -16,7 +16,7 @@ import jakarta.ws.rs.core.Response;
 
 @Path("/ventas")
 @Authenticated
-@RequiereModulo(Modulo.VENTA)
+@RequiereModulo({Modulo.VENTA})
 @Produces(MediaType.APPLICATION_JSON)
 public class VentaResource {
 

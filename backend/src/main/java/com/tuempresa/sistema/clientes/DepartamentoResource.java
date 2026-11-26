@@ -14,7 +14,7 @@ import java.util.List;
 
 @Path("/departamentos")
 @Authenticated
-@RequiereModulo(Modulo.CLIENTES)
+@RequiereModulo({Modulo.CLIENTES})
 @Produces(MediaType.APPLICATION_JSON)
 public class DepartamentoResource {
 

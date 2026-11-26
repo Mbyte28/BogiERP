@@ -69,7 +69,11 @@ function respuesta(datos: unknown, status = 200) {
   });
 }
 
-function simularApi(caja: CajaActual = cajaAbierta, ventaNoDisponible = false) {
+function simularApi(
+  caja: CajaActual = cajaAbierta,
+  ventaNoDisponible = false,
+  ubicacionEliminada = false,
+) {
   const peticiones = vi.fn<(url: string, init?: RequestInit) => void>();
   vi.stubGlobal(
     "fetch",
@@ -83,6 +87,70 @@ function simularApi(caja: CajaActual = cajaAbierta, ventaNoDisponible = false) {
         return respuesta([{ id: 4, nombre: "Lácteos", icono: "milk", productos: 1 }]);
       }
       if (url.includes("/catalogo")) return respuesta(catalogo);
+      if (url.includes("/edificio/config")) {
+        return respuesta({
+          configurado: true,
+          torres: 1,
+          pisosPorTorre: 1,
+          deptosPorPiso: 1,
+          totalDepartamentos: 1,
+        });
+      }
+      if (url.includes("/edificio/torres/1/pisos/1/departamentos")) {
+        return respuesta([
+          {
+            id: 5,
+            torre: 1,
+            piso: 1,
+            numero: 101,
+            etiqueta: "Torre 1 Departamento 101",
+            conDeuda: false,
+            fiadosPendientes: 0,
+            totalPendiente: "0.00",
+          },
+        ]);
+      }
+      if (url.includes("/edificio/torres/1/pisos")) {
+        return respuesta([
+          {
+            piso: 1,
+            departamentos: 1,
+            departamentosConDeuda: 0,
+            totalPendiente: "0.00",
+          },
+        ]);
+      }
+      if (url.includes("/edificio/torres")) {
+        return respuesta([
+          { torre: 1, pisos: 1, departamentos: 1, departamentosConDeuda: 0, totalPendiente: "0.00" },
+        ]);
+      }
+      if (url.endsWith("/fiados") && metodo === "POST") {
+        if (ubicacionEliminada) {
+          return respuesta(
+            { message: "El departamento ya no existe; actualiza la lista y elige otro." },
+            404,
+          );
+        }
+        return respuesta(
+          [
+            {
+              id: 12,
+              departamentoId: 5,
+              productoId: 1,
+              nombreProducto: "Leche entera",
+              tipoVenta: "UNIDAD",
+              cantidad: "1",
+              precioUnitario: "5.50",
+              subtotal: "5.50",
+              estado: "PENDIENTE",
+              creadoEn: "2026-11-25T10:00:00Z",
+              pagadoEn: null,
+            },
+          ],
+          201,
+        );
+      }
       if (url.includes("/productos")) return respuesta({ items: [], total: 0, page: 0, size: 25 });
       if (url.includes("/ventas") && metodo === "POST") {
         if (ventaNoDisponible) {
@@ -233,11 +301,24 @@ describe("VentaPage", () => {
     expect(cuerpo.medioTransferencia).toBe("PLIN");
   });
 
+  it("muestra el estado de caja junto a Ticket sin fondo ni contenedor", async () => {
+    simularApi();
+    renderizar();
+
+    const estado = await screen.findByText("Caja abierta");
+    expect(estado).toHaveClass("text-[#3d8f83]");
+    expect(estado.className).not.toContain("bg-");
+    expect(estado.parentElement).toHaveTextContent("Ticket");
+    expect(estado.parentElement?.querySelector(".rounded-full")).not.toBeNull();
+    expect(screen.queryByText(/Los más vendidos aparecen primero/)).not.toBeInTheDocument();
+  });
+
   it("impide finalizar si la caja está cerrada", async () => {
     simularApi({ abierta: false, caja: null });
     renderizar();
 
-    expect(await screen.findByText(/La caja está cerrada/)).toBeInTheDocument();
+    expect(await screen.findByText("Caja cerrada")).toBeInTheDocument();
+    expect(screen.queryByText("Caja abierta")).not.toBeInTheDocument();
     await screen.findAllByText("Leche entera");
     fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
     expect(screen.getByRole("button", { name: "Finalizar venta" })).toBeDisabled();
@@ -271,5 +352,57 @@ describe("VentaPage", () => {
       expect(url).not.toContain("categoriaId");
     });
     expect(screen.getByText(/Buscando en todas las categorías/)).toBeInTheDocument();
+  });
+
+  it("genera un envío desde el ticket eligiendo torre, piso y departamento", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    expect(screen.getByRole("button", { name: "Envío" })).toBeDisabled();
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
+    fireEvent.click(screen.getByRole("button", { name: "Envío" }));
+
+    const hoja = await screen.findByRole("dialog", { name: "Envío" });
+    const confirmar = within(hoja).getByRole("button", { name: "Confirmar envío" });
+    expect(confirmar).toBeDisabled();
+    fireEvent.click(await within(hoja).findByRole("button", { name: "Torre 1" }));
+    fireEvent.click(await within(hoja).findByRole("button", { name: "Piso 1" }));
+    fireEvent.click(await within(hoja).findByRole("button", { name: "Depto 101" }));
+    expect(confirmar).toBeEnabled();
+
+    fireEvent.click(confirmar);
+    expect(await screen.findByText("Envío registrado.")).toBeInTheDocument();
+    const llamada = peticiones.mock.calls.find(
+      ([url, init]) => url.endsWith("/fiados") && init?.method === "POST",
+    );
+    expect(llamada).toBeDefined();
+    expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({
+      departamentoId: 5,
+      items: [{ productoId: 1, cantidad: 1 }],
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Envío" })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: "Envío" })).toBeDisabled();
+  });
+
+  it("vuelve a elegir ubicación si el departamento fue borrado desde otro dispositivo", async () => {
+    simularApi(cajaAbierta, false, true);
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
+    fireEvent.click(screen.getByRole("button", { name: "Envío" }));
+
+    const hoja = await screen.findByRole("dialog", { name: "Envío" });
+    fireEvent.click(await within(hoja).findByRole("button", { name: "Torre 1" }));
+    fireEvent.click(await within(hoja).findByRole("button", { name: "Piso 1" }));
+    fireEvent.click(await within(hoja).findByRole("button", { name: "Depto 101" }));
+    fireEvent.click(within(hoja).getByRole("button", { name: "Confirmar envío" }));
+
+    expect(await within(hoja).findByRole("status")).toHaveTextContent("ya no existe");
+    expect(within(hoja).getByRole("button", { name: "Torre 1" })).toBeInTheDocument();
+    expect(within(hoja).getByRole("button", { name: "Confirmar envío" })).toBeDisabled();
   });
 });

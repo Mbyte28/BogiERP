@@ -18,7 +18,7 @@ import java.util.List;
 
 @Path("/usuarios")
 @Authenticated
-@RequiereModulo(Modulo.CUENTAS)
+@RequiereModulo({Modulo.CUENTAS})
 @Produces(MediaType.APPLICATION_JSON)
 public class UsuarioResource {
 

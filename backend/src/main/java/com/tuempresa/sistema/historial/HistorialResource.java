@@ -17,7 +17,7 @@ import jakarta.ws.rs.core.MediaType;
 
 @Path("/historial")
 @Authenticated
-@RequiereModulo(Modulo.HISTORIAL)
+@RequiereModulo({Modulo.HISTORIAL})
 @Produces(MediaType.APPLICATION_JSON)
 public class HistorialResource {
 

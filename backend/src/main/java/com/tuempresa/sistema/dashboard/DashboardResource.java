@@ -18,7 +18,7 @@ import java.util.List;
 
 @Path("/dashboard")
 @Authenticated
-@RequiereModulo(Modulo.DASHBOARD)
+@RequiereModulo({Modulo.DASHBOARD})
 @Produces(MediaType.APPLICATION_JSON)
 public class DashboardResource {
 

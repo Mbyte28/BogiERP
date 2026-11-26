@@ -90,6 +90,10 @@ export interface SolicitudFiado {
 
 export type NivelDeuda = "edificio" | "torre" | "piso";
 
+/** Los envíos usan internamente la misma entidad y endpoint de fiados. */
+export type Envio = Fiado;
+export type SolicitudEnvio = SolicitudFiado;
+
 function consulta(parametros: Record<string, number | string | undefined>): string {
   const pares = Object.entries(parametros)
     .filter(([, valor]) => valor !== null && valor !== undefined && valor !== "")
@@ -114,6 +118,6 @@ export const clientesApi = {
   productos: () => api.get<ProductoFiado[]>("/fiados/productos"),
   deudas: (nivel: NivelDeuda, torre?: number, piso?: number) =>
     api.get<DeudaGrupo[]>(`/fiados/deudas${consulta({ nivel, torre, piso })}`),
-  registrar: (datos: SolicitudFiado) => api.post<Fiado[]>("/fiados", datos),
-  pagar: (id: number) => api.patch<Fiado>(`/fiados/${id}/pagar`),
+  registrarEnvio: (datos: SolicitudEnvio) => api.post<Envio[]>("/fiados", datos),
+  pagar: (id: number) => api.patch<Envio>(`/fiados/${id}/pagar`),
 };

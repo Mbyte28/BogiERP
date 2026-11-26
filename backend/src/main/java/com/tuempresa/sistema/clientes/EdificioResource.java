@@ -23,7 +23,7 @@ import java.util.List;
 
 @Path("/edificio")
 @Authenticated
-@RequiereModulo(Modulo.CLIENTES)
+@RequiereModulo({Modulo.CLIENTES})
 @Produces(MediaType.APPLICATION_JSON)
 public class EdificioResource {
 
@@ -32,6 +32,7 @@ public class EdificioResource {
 
     @GET
     @Path("/config")
+    @RequiereModulo({Modulo.VENTA, Modulo.CLIENTES})
     public ConfigEdificioResponse configuracion() {
         return servicio.configuracion();
     }
@@ -54,18 +55,21 @@ public class EdificioResource {
 
     @GET
     @Path("/torres")
+    @RequiereModulo({Modulo.VENTA, Modulo.CLIENTES})
     public List<TorreResponse> torres() {
         return servicio.torres();
     }
 
     @GET
     @Path("/torres/{torre}/pisos")
+    @RequiereModulo({Modulo.VENTA, Modulo.CLIENTES})
     public List<PisoResponse> pisos(@PathParam("torre") int torre) {
         return servicio.pisos(torre);
     }
 
     @GET
     @Path("/torres/{torre}/pisos/{piso}/departamentos")
+    @RequiereModulo({Modulo.VENTA, Modulo.CLIENTES})
     public List<DepartamentoResponse> departamentos(
             @PathParam("torre") int torre, @PathParam("piso") int piso) {
         return servicio.departamentos(torre, piso);

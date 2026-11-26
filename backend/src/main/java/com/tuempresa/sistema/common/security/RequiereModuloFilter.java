@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -33,7 +34,7 @@ public class RequiereModuloFilter implements ContainerRequestFilter {
 
     @Override
     public void filter(ContainerRequestContext request) {
-        Optional<Modulo> requerido = moduloRequerido();
+        Optional<Modulo[]> requerido = moduloRequerido();
         if (requerido.isEmpty()) {
             return;
         }
@@ -42,7 +43,7 @@ public class RequiereModuloFilter implements ContainerRequestFilter {
             return;
         }
 
-        if (!tieneModulo(requerido.get())) {
+        if (Arrays.stream(requerido.get()).noneMatch(this::tieneModulo)) {
             request.abortWith(Response.status(Response.Status.FORBIDDEN)
                     .type(MediaType.APPLICATION_JSON)
                     .entity(new ErrorResponse("No tienes permiso para acceder a este módulo"))
@@ -73,7 +74,7 @@ public class RequiereModuloFilter implements ContainerRequestFilter {
         return valor instanceof JsonString texto ? texto.getString() : String.valueOf(valor);
     }
 
-    private Optional<Modulo> moduloRequerido() {
+    private Optional<Modulo[]> moduloRequerido() {
         RequiereModulo anotacion = null;
         if (resourceInfo.getResourceMethod() != null) {
             anotacion = resourceInfo.getResourceMethod().getAnnotation(RequiereModulo.class);

@@ -6,11 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Exige que el usuario autenticado tenga permiso sobre el módulo indicado.
+ * Exige que el usuario autenticado tenga permiso sobre alguno de los módulos indicados.
  * El rol principal siempre tiene acceso a todos los módulos.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
 public @interface RequiereModulo {
-    Modulo value();
+    Modulo[] value();
 }

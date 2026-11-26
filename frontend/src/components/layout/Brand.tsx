@@ -10,7 +10,7 @@ export function Brand() {
         <p className="truncate text-sm font-bold leading-tight text-ink">
           Tienda Condominio
         </p>
-        <p className="truncate text-[11px] text-ink-soft">Inventario · Ventas · Fiados</p>
+        <p className="truncate text-[11px] text-ink-soft">Inventario · Ventas · Envíos</p>
       </div>
     </div>
   );

@@ -169,7 +169,7 @@ class ClientesResourceTest {
                 .put("/edificio/config")
                 .then()
                 .statusCode(409)
-                .body("message", containsString("fiados pendientes"))
+                .body("message", containsString("envíos activos"))
                 .body("message", containsString("Torre 1 Departamento " + (100 + actuales.deptos)));
 
         given()
@@ -452,11 +452,31 @@ class ClientesResourceTest {
                 .cookie(COOKIE, tokenVenta)
                 .get("/edificio/config")
                 .then()
-                .statusCode(403)
-                .body("message", containsString("módulo"));
+                .statusCode(200);
         given()
                 .cookie(COOKIE, tokenVenta)
-                .get("/edificio/torres")
+                .get("/edificio/torres/1/pisos/1/departamentos")
+                .then()
+                .statusCode(200);
+
+        long productoVenta = crearProducto(tokenAdmin, "Envío venta " + marca, "5.00", "2.00", "10");
+        long departamentoVenta = primerDepartamento(tokenAdmin);
+        long envioVenta = given()
+                .cookie(COOKIE, tokenVenta)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"departamentoId": %d, "items": [{"productoId": %d, "cantidad": 1}]}
+                        """.formatted(departamentoVenta, productoVenta))
+                .post("/fiados")
+                .then()
+                .statusCode(201)
+                .extract()
+                .jsonPath()
+                .getLong("[0].id");
+
+        given()
+                .cookie(COOKIE, tokenVenta)
+                .get("/fiados/deudas")
                 .then()
                 .statusCode(403);
         given()
@@ -466,14 +486,12 @@ class ClientesResourceTest {
                 .statusCode(403);
         given()
                 .cookie(COOKIE, tokenVenta)
-                .get("/fiados/deudas")
+                .get("/departamentos/{id}/fiados", departamentoVenta)
                 .then()
                 .statusCode(403);
         given()
                 .cookie(COOKIE, tokenVenta)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body("{\"departamentoId\": 1, \"items\": []}")
-                .post("/fiados")
+                .patch("/fiados/{id}/pagar", envioVenta)
                 .then()
                 .statusCode(403);
     }

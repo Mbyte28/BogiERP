@@ -28,7 +28,7 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 @Path("/productos")
 @Authenticated
-@RequiereModulo(Modulo.INVENTARIO)
+@RequiereModulo({Modulo.INVENTARIO})
 @Produces(MediaType.APPLICATION_JSON)
 public class ProductoResource {
 

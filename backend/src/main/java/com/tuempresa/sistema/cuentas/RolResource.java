@@ -21,7 +21,7 @@ import java.util.List;
 
 @Path("/roles")
 @Authenticated
-@RequiereModulo(Modulo.CUENTAS)
+@RequiereModulo({Modulo.CUENTAS})
 @Produces(MediaType.APPLICATION_JSON)
 public class RolResource {
 

@@ -126,12 +126,15 @@ describe("CajaPage", () => {
     expect(filaLeche).toHaveTextContent("S/ 11.00");
     expect(filaLeche).not.toHaveTextContent("vendidos");
     expect(filaLeche).not.toHaveTextContent("Unidad");
-    expect(filaLeche).not.toHaveTextContent("Ganancia");
+    expect(filaLeche).toHaveTextContent("Ganancia S/ 4.00");
 
     const filaPollo = screen.getByText("Pollo fresco").closest("li") as HTMLElement;
     expect(filaPollo).toHaveTextContent("3.5 kg");
     expect(filaPollo).toHaveTextContent("S/ 42.00");
+    expect(filaPollo).toHaveTextContent("Ganancia —");
 
+    expect(screen.getByText("Ganancia acumulada")).toBeInTheDocument();
+    expect(screen.getByText("S/ 4.00")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Actualizar" })).not.toBeInTheDocument();
   });
 

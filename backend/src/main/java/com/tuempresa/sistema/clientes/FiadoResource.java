@@ -24,7 +24,7 @@ import java.util.List;
 
 @Path("/fiados")
 @Authenticated
-@RequiereModulo(Modulo.CLIENTES)
+@RequiereModulo({Modulo.CLIENTES})
 @Produces(MediaType.APPLICATION_JSON)
 public class FiadoResource {
 
@@ -48,6 +48,7 @@ public class FiadoResource {
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
+    @RequiereModulo({Modulo.VENTA, Modulo.CLIENTES})
     public Response crear(@Valid CrearFiadoRequest solicitud) {
         return Response.status(Response.Status.CREATED)
                 .entity(servicio.registrar(solicitud))

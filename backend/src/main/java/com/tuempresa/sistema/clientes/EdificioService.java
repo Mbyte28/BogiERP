@@ -88,7 +88,7 @@ public class EdificioService {
                     .setParameter("ids", ids)
                     .getResultList();
             if (!conDeuda.isEmpty()) {
-                throw Errores.conflict("No se puede eliminar: hay fiados pendientes en "
+                throw Errores.conflict("No se puede eliminar: hay envíos activos en "
                         + String.join(", ", conDeuda));
             }
 

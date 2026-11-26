@@ -3,8 +3,8 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
+  Truck,
   UserCog,
-  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -58,11 +58,11 @@ export const MODULOS: readonly Modulo[] = [
   },
   {
     key: "CLIENTES",
-    nombre: "Clientes",
-    nombreCorto: "Clientes",
-    ruta: "/clientes",
-    descripcion: "Torres, pisos, departamentos y fiados pendientes",
-    icono: Users,
+    nombre: "Envíos",
+    nombreCorto: "Envíos",
+    ruta: "/envios",
+    descripcion: "Torres, pisos, departamentos y envíos activos o pagados",
+    icono: Truck,
   },
   {
     key: "CAJA",

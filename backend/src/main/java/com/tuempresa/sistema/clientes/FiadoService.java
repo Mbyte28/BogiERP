@@ -56,7 +56,7 @@ public class FiadoService {
             throw Errores.notFound("El departamento ya no existe; actualiza la lista y elige otro.");
         }
         if (solicitud.items() == null || solicitud.items().isEmpty()) {
-            throw Errores.badRequest("Agrega al menos un producto al fiado");
+            throw Errores.badRequest("Agrega al menos un producto al envío");
         }
 
         Map<Long, Producto> seleccionados = new LinkedHashMap<>();
@@ -130,10 +130,10 @@ public class FiadoService {
     public FiadoResponse pagar(Long id) {
         Fiado fiado = fiados.findById(id);
         if (fiado == null) {
-            throw Errores.notFound("Fiado no encontrado");
+            throw Errores.notFound("Envío no encontrado");
         }
         if ("PAGADO".equals(fiado.estado)) {
-            throw Errores.conflict("El fiado ya está pagado");
+            throw Errores.conflict("El envío ya está pagado");
         }
         fiado.estado = "PAGADO";
         fiado.pagadoEn = Instant.now();

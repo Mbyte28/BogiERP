@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -9,6 +8,7 @@ import {
   Search,
   ShoppingCart,
   Trash2,
+  Truck,
   Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ import {
 } from "@/lib/inventario";
 import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { IconoCategoria } from "@/modules/inventario/IconoCategoria";
+import { EnvioSheet } from "./EnvioSheet";
 import {
   totalTicket,
   transferencia,
@@ -58,6 +59,8 @@ export default function VentaPage() {
   const [elegirMedio, setElegirMedio] = useState(false);
   const [ventaExitosa, setVentaExitosa] = useState<VentaResponse | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const [envioAbierto, setEnvioAbierto] = useState(false);
+  const [avisoEnvio, setAvisoEnvio] = useState<string | null>(null);
 
   const caja = useQuery({
     queryKey: ["caja", "actual"],
@@ -81,6 +84,7 @@ export default function VentaPage() {
     onSuccess: async (venta) => {
       setVentaExitosa(venta);
       setLineas([]);
+      setAvisoEnvio(null);
       setRecibido("");
       setEfectivo("");
       setTicketAbierto(false);
@@ -116,6 +120,7 @@ export default function VentaPage() {
 
   function agregar(producto: ItemCatalogo) {
     setMensaje(null);
+    setAvisoEnvio(null);
     setLineas((actuales) => {
       const maximo = Number(producto.stock);
       const actual = actuales.find((linea) => linea.producto.id === producto.id);
@@ -221,27 +226,31 @@ export default function VentaPage() {
         </p>
       </div>
 
-      {!caja.isPending && !cajaAbierta && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-warning/20 px-5 py-4 text-sm text-[#a87733]"
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          aria-label="Envío"
+          variant="secondary"
+          disabled={lineas.length === 0}
+          onClick={() => setEnvioAbierto(true)}
         >
-          <span>La caja está cerrada. Ábrela para poder registrar ventas.</span>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/caja">Ir a caja</Link>
-          </Button>
-        </div>
-      )}
+          <Truck />
+          Envío
+        </Button>
+        {avisoEnvio && (
+          <p role="status" className="text-sm font-semibold text-[#3d8f83]">
+            {avisoEnvio}
+          </p>
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Catálogo</CardTitle>
-            <p className="text-sm text-ink-soft">
-              {busqueda.trim()
-                ? "Buscando en todas las categorías."
-                : "Los más vendidos aparecen primero. Toca un producto para agregarlo."}
-            </p>
+            {busqueda.trim() && (
+              <p className="text-sm text-ink-soft">Buscando en todas las categorías.</p>
+            )}
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="relative">
@@ -438,6 +447,16 @@ export default function VentaPage() {
           </Button>
         </SheetContent>
       </Sheet>
+
+      <EnvioSheet
+        abierto={envioAbierto}
+        onOpenChange={setEnvioAbierto}
+        lineas={lineas}
+        onEnviado={() => {
+          setLineas([]);
+          setAvisoEnvio("Envío registrado.");
+        }}
+      />
     </div>
   );
 }
@@ -569,16 +588,26 @@ function Ticket({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-3">
-        <div>
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <CardTitle>Ticket</CardTitle>
-          <p className="text-sm text-ink-soft">
-            {lineas.length} {lineas.length === 1 ? "producto" : "productos"}
-          </p>
+          <span
+            aria-hidden="true"
+            className={`size-2 shrink-0 rounded-full ${
+              cajaAbierta ? "bg-success-strong" : "bg-danger"
+            }`}
+          />
+          <span
+            className={`text-sm font-semibold ${
+              cajaAbierta ? "text-[#3d8f83]" : "text-[#c75f53]"
+            }`}
+          >
+            {cajaAbierta ? "Caja abierta" : "Caja cerrada"}
+          </span>
         </div>
-        <Badge variant={cajaAbierta ? "success" : "warning"}>
-          {cajaAbierta ? "Caja abierta" : "Caja cerrada"}
-        </Badge>
+        <p className="text-sm text-ink-soft">
+          {lineas.length} {lineas.length === 1 ? "producto" : "productos"}
+        </p>
       </CardHeader>
       <CardContent className="space-y-5">
         {lineas.length ? (

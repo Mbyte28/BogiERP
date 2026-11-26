@@ -107,7 +107,7 @@ describe("CuentasPage", () => {
     const botonGuardar = screen.getByRole("button", { name: "Guardar permisos" });
     const editor = botonGuardar.closest("li") as HTMLElement;
     fireEvent.click(within(editor).getByLabelText("Registrar venta"));
-    fireEvent.click(within(editor).getByLabelText("Clientes"));
+    fireEvent.click(within(editor).getByLabelText("Envíos"));
     fireEvent.click(botonGuardar);
 
     await waitFor(() => {

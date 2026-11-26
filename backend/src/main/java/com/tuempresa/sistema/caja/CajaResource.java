@@ -18,7 +18,7 @@ import java.util.List;
 
 @Path("/caja")
 @Authenticated
-@RequiereModulo(Modulo.CAJA)
+@RequiereModulo({Modulo.CAJA})
 @Produces(MediaType.APPLICATION_JSON)
 public class CajaResource {
 

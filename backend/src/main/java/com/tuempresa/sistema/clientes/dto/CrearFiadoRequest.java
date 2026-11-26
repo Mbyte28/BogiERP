@@ -6,5 +6,5 @@ import java.util.List;
 
 public record CrearFiadoRequest(
         @NotNull(message = "Indica el departamento") Long departamentoId,
-        @NotEmpty(message = "Agrega al menos un producto al fiado") List<ItemFiadoRequest> items) {
+        @NotEmpty(message = "Agrega al menos un producto al envío") List<ItemFiadoRequest> items) {
 }

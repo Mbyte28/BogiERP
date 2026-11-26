@@ -593,7 +593,7 @@ export default function DashboardPage() {
           </div>
 
           <p className={cn("text-xs text-ink-soft")}>
-            Las cifras usan los precios y costos guardados al momento de cada venta o fiado.
+            Las cifras usan los precios y costos guardados al momento de cada venta o envío.
           </p>
         </>
       )}

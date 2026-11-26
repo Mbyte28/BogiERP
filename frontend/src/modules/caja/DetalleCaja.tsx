@@ -134,27 +134,40 @@ function VistaGeneral({ productos }: { productos: ProductoCaja[] }) {
   if (!productos.length) {
     return <p className="py-8 text-center text-sm text-ink-soft">Aún no hay ventas en esta caja.</p>;
   }
+  const gananciaAcumulada = productos.reduce(
+    (suma, producto) => suma + Number(producto.ganancia ?? 0),
+    0,
+  );
   return (
-    <ul className="divide-y divide-line/70">
-      {productos.map((producto) => (
-        <li key={producto.productoId} className="flex flex-wrap items-center gap-3 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-ink">
-              {producto.nombreProducto}
-            </p>
-          </div>
-          {producto.tieneItemsSinCosto && <Badge variant="warning">Sin costo</Badge>}
-          <div className="flex shrink-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 text-right sm:flex-nowrap">
-            <span className="whitespace-nowrap text-sm font-bold text-ink">
-              {cantidad(producto.cantidadTotal)} {producto.tipoVenta === "KILO" ? "kg" : "uni."}
-            </span>
-            <span className="whitespace-nowrap text-sm font-semibold text-ink-soft">
-              {dinero(producto.ventasTotal)}
-            </span>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <ul className="divide-y divide-line/70">
+        {productos.map((producto) => (
+          <li key={producto.productoId} className="flex flex-wrap items-center gap-3 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-ink">
+                {producto.nombreProducto}
+              </p>
+            </div>
+            {producto.tieneItemsSinCosto && <Badge variant="warning">Sin costo</Badge>}
+            <div className="flex shrink-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 text-right sm:flex-nowrap">
+              <span className="whitespace-nowrap text-sm font-bold text-ink">
+                {cantidad(producto.cantidadTotal)} {producto.tipoVenta === "KILO" ? "kg" : "uni."}
+              </span>
+              <span className="whitespace-nowrap text-sm font-semibold text-ink-soft">
+                {dinero(producto.ventasTotal)}
+              </span>
+              <span className="w-full whitespace-nowrap text-xs font-semibold text-[#3d8f83]">
+                Ganancia {dinero(producto.ganancia)}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-sm">
+        <span className="font-semibold text-ink-soft">Ganancia acumulada</span>
+        <span className="font-bold text-[#3d8f83]">{dinero(gananciaAcumulada)}</span>
+      </p>
+    </div>
   );
 }
 

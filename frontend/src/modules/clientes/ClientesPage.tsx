@@ -8,7 +8,6 @@ import {
   ClipboardList,
   DoorStairwell,
   House,
-  Plus,
   Settings2,
   type LucideIcon,
 } from "lucide-react";
@@ -16,13 +15,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
   clientesApi,
   type Departamento,
-  type Fiado,
-  type ItemFiado,
+  type Envio,
   type NivelDeuda,
 } from "@/lib/clientes";
 import { fechaHora } from "@/lib/fechas";
@@ -33,8 +30,7 @@ const ESTILO_CAMPO =
   "h-11 w-full rounded-field border border-line bg-app px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40";
 
 type Hoja =
-  | { tipo: "fiados"; departamento: Departamento }
-  | { tipo: "registrar"; departamento: Departamento }
+  | { tipo: "envios"; departamento: Departamento }
   | { tipo: "deudas" };
 
 type CuadroDatos = {
@@ -94,12 +90,12 @@ function Cuadro({ datos }: { datos: CuadroDatos }) {
   );
 }
 
-function FilaFiado({
-  fiado,
+function FilaEnvio({
+  envio,
   pagando,
   onPagar,
 }: {
-  fiado: Fiado;
+  envio: Envio;
   pagando: boolean;
   onPagar: () => void;
 }) {
@@ -107,19 +103,19 @@ function FilaFiado({
     <li className="flex flex-wrap items-start justify-between gap-3 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-bold text-ink">{fiado.nombreProducto}</span>
-          <Badge variant={fiado.estado === "PAGADO" ? "success" : "danger"}>
-            {fiado.estado === "PAGADO" ? "Pagado" : "Pendiente"}
+          <span className="text-sm font-bold text-ink">{envio.nombreProducto}</span>
+          <Badge variant={envio.estado === "PAGADO" ? "success" : "danger"}>
+            {envio.estado === "PAGADO" ? "Pagado" : "Activo"}
           </Badge>
         </div>
         <p className="mt-1 text-xs text-ink-soft">
-          {cantidad(fiado.cantidad)} {fiado.tipoVenta === "KILO" ? "kg" : "und"} ×{" "}
-          {dinero(fiado.precioUnitario)} · {fechaHora(fiado.creadoEn)}
+          {cantidad(envio.cantidad)} {envio.tipoVenta === "KILO" ? "kg" : "und"} ×{" "}
+          {dinero(envio.precioUnitario)} · {fechaHora(envio.creadoEn)}
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
-        <span className="text-sm font-bold text-ink">{dinero(fiado.subtotal)}</span>
-        {fiado.estado === "PENDIENTE" && (
+        <span className="text-sm font-bold text-ink">{dinero(envio.subtotal)}</span>
+        {envio.estado === "PENDIENTE" && (
           <Button type="button" size="sm" variant="secondary" disabled={pagando} onClick={onPagar}>
             {pagando ? "Pagando…" : "Marcar pagado"}
           </Button>
@@ -149,19 +145,10 @@ export default function ClientesPage() {
   const [errorEdicion, setErrorEdicion] = useState<string | null>(null);
   const [bloqueo, setBloqueo] = useState<string | null>(null);
 
-  const [productoId, setProductoId] = useState("");
-  const [cantidadTexto, setCantidadTexto] = useState("1");
-  const [lineas, setLineas] = useState<ItemFiado[]>([]);
-  const [errorRegistro, setErrorRegistro] = useState<string | null>(null);
-
   function reiniciarPorCambioExterno() {
     setHoja(null);
     setTorre(null);
     setPiso(null);
-    setLineas([]);
-    setProductoId("");
-    setCantidadTexto("1");
-    setErrorRegistro(null);
     setErrorAccion(null);
     setAviso(AVISO_UBICACION_ELIMINADA);
     void queryClient.invalidateQueries({ queryKey: ["clientes"] });
@@ -196,22 +183,17 @@ export default function ClientesPage() {
     enabled: configurado && hoja?.tipo === "deudas",
   });
 
-  const idFiados = hoja?.tipo === "fiados" ? hoja.departamento.id : null;
-  const fiados = useQuery({
-    queryKey: ["clientes", "fiados", idFiados],
-    queryFn: () => clientesApi.fiados(idFiados as number),
-    enabled: idFiados !== null,
-  });
-  const productos = useQuery({
-    queryKey: ["clientes", "productos"],
-    queryFn: clientesApi.productos,
-    enabled: hoja?.tipo === "registrar",
+  const idEnvios = hoja?.tipo === "envios" ? hoja.departamento.id : null;
+  const envios = useQuery({
+    queryKey: ["clientes", "envios", idEnvios],
+    queryFn: () => clientesApi.fiados(idEnvios as number),
+    enabled: idEnvios !== null,
   });
 
   useEffect(() => {
-    const error = pisos.error ?? departamentos.error ?? fiados.error;
+    const error = pisos.error ?? departamentos.error ?? envios.error;
     if (esUbicacionEliminada(error)) reiniciarPorCambioExterno();
-  }, [pisos.error, departamentos.error, fiados.error]);
+  }, [pisos.error, departamentos.error, envios.error]);
 
   const configurar = useMutation({
     mutationFn: clientesApi.configurar,
@@ -249,7 +231,7 @@ export default function ClientesPage() {
     mutationFn: clientesApi.pagar,
     onSuccess: async () => {
       setErrorAccion(null);
-      setAviso("Fiado marcado como pagado.");
+      setAviso("Envío marcado como pagado.");
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
     },
     onError: (error) => {
@@ -257,29 +239,7 @@ export default function ClientesPage() {
         reiniciarPorCambioExterno();
         return;
       }
-      setErrorAccion(mensajeDe(error, "No se pudo marcar el fiado como pagado."));
-    },
-  });
-
-  const registrar = useMutation({
-    mutationFn: clientesApi.registrar,
-    onSuccess: async () => {
-      setLineas([]);
-      setProductoId("");
-      setCantidadTexto("1");
-      setErrorRegistro(null);
-      setAviso("Fiado registrado.");
-      if (hoja?.tipo === "registrar") {
-        setHoja({ tipo: "fiados", departamento: hoja.departamento });
-      }
-      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
-    },
-    onError: (error) => {
-      if (esUbicacionEliminada(error)) {
-        reiniciarPorCambioExterno();
-        return;
-      }
-      setErrorRegistro(mensajeDe(error, "No se pudo registrar el fiado."));
+      setErrorAccion(mensajeDe(error, "No se pudo marcar el envío como pagado."));
     },
   });
 
@@ -334,20 +294,10 @@ export default function ClientesPage() {
     });
   }
 
-  function abrirFiados(departamento: Departamento) {
+  function abrirEnvios(departamento: Departamento) {
     setAviso(null);
     setErrorAccion(null);
-    setHoja({ tipo: "fiados", departamento });
-  }
-
-  function abrirRegistro(departamento: Departamento) {
-    setAviso(null);
-    setErrorAccion(null);
-    setErrorRegistro(null);
-    setLineas([]);
-    setProductoId("");
-    setCantidadTexto("1");
-    setHoja({ tipo: "registrar", departamento });
+    setHoja({ tipo: "envios", departamento });
   }
 
   function cerrarHoja(abierto: boolean) {
@@ -355,29 +305,6 @@ export default function ClientesPage() {
     setHoja(null);
     setAviso(null);
     setErrorAccion(null);
-    setErrorRegistro(null);
-  }
-
-  function agregarLinea(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    const producto = productos.data?.find((item) => item.id === Number(productoId));
-    const valor = Number(cantidadTexto);
-    if (!producto) {
-      setErrorRegistro("Selecciona un producto.");
-      return;
-    }
-    if (!Number.isFinite(valor) || valor <= 0) {
-      setErrorRegistro("La cantidad debe ser mayor que cero.");
-      return;
-    }
-    if (producto.tipoVenta === "UNIDAD" && !Number.isInteger(valor)) {
-      setErrorRegistro("Este producto se vende por unidad: usa una cantidad entera.");
-      return;
-    }
-    setLineas((actuales) => [...actuales, { productoId: producto.id, cantidad: valor }]);
-    setProductoId("");
-    setCantidadTexto("1");
-    setErrorRegistro(null);
   }
 
   function cuadros(): CuadroDatos[] {
@@ -385,12 +312,14 @@ export default function ClientesPage() {
       return (departamentos.data ?? []).map((departamento) => ({
         clave: departamento.id,
         titulo: `Depto ${departamento.numero}`,
-        subtitulo: `${departamento.fiadosPendientes} ${departamento.fiadosPendientes === 1 ? "fiado" : "fiados"}`,
+        subtitulo: `${departamento.fiadosPendientes} ${
+          departamento.fiadosPendientes === 1 ? "envío" : "envíos"
+        }`,
         pie: departamento.conDeuda ? dinero(departamento.totalPendiente) : "Al día",
         conDeuda: departamento.conDeuda,
-        etiqueta: `Ver fiados de ${departamento.etiqueta}`,
+        etiqueta: `Ver envíos de ${departamento.etiqueta}`,
         Icono: House,
-        alSeleccionar: () => abrirFiados(departamento),
+        alSeleccionar: () => abrirEnvios(departamento),
       }));
     }
     if (torre !== null) {
@@ -522,10 +451,6 @@ export default function ClientesPage() {
     : torre !== null
       ? `Torre ${torre}`
       : null;
-  const totalEstimado = lineas.reduce((suma, linea) => {
-    const producto = productos.data?.find((item) => item.id === linea.productoId);
-    return suma + (producto ? Number(producto.precioVenta) * linea.cantidad : 0);
-  }, 0);
 
   return (
     <div className="space-y-6">
@@ -555,7 +480,7 @@ export default function ClientesPage() {
           <div className="min-w-0">
             <CardTitle>{piso !== null ? "Departamentos" : torre !== null ? "Pisos" : "Torres"}</CardTitle>
             <p className="text-sm text-ink-soft">
-              Coral indica fiados pendientes; menta significa que está al día.
+              Coral indica envíos activos; menta significa que está al día.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -577,7 +502,7 @@ export default function ClientesPage() {
               type="button"
               variant="secondary"
               size="sm"
-              aria-label="Revisar fiados"
+              aria-label="Revisar envíos"
               onClick={() => {
                 setAviso(null);
                 setErrorAccion(null);
@@ -585,7 +510,7 @@ export default function ClientesPage() {
               }}
             >
               <ClipboardList />
-              <span className="hidden sm:inline">Revisar fiados</span>
+              <span className="hidden sm:inline">Revisar envíos</span>
             </Button>
           </div>
         </CardHeader>
@@ -622,22 +547,12 @@ export default function ClientesPage() {
         {hoja && (
           <SheetContent
             side="bottom"
-            title={
-              hoja.tipo === "deudas"
-                ? "Revisar fiados"
-                : hoja.tipo === "registrar"
-                  ? "Registrar fiado"
-                  : hoja.departamento.etiqueta
-            }
+            title={hoja.tipo === "deudas" ? "Revisar envíos" : hoja.departamento.etiqueta}
             className="overflow-y-auto"
           >
             <div className="mb-4 pr-10">
               <h3 className="text-lg font-bold tracking-tight text-ink">
-                {hoja.tipo === "deudas"
-                  ? "Fiados pendientes"
-                  : hoja.tipo === "registrar"
-                    ? "Registrar fiado"
-                    : hoja.departamento.etiqueta}
+                {hoja.tipo === "deudas" ? "Envíos activos" : hoja.departamento.etiqueta}
               </h3>
               <p className="mt-1 text-sm text-ink-soft">
                 {hoja.tipo === "deudas"
@@ -657,144 +572,44 @@ export default function ClientesPage() {
               </p>
             )}
 
-            {hoja.tipo === "fiados" && (
+            {hoja.tipo === "envios" && (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={hoja.departamento.conDeuda ? "danger" : "success"}>
-                    {hoja.departamento.conDeuda ? "Con deuda" : "Al día"}
+                    {hoja.departamento.conDeuda ? "Con envíos activos" : "Al día"}
                   </Badge>
                   <span className="text-sm text-ink-soft">
-                    {hoja.departamento.fiadosPendientes} pendiente(s) ·{" "}
+                    {hoja.departamento.fiadosPendientes} activo(s) ·{" "}
                     {dinero(hoja.departamento.totalPendiente)}
                   </span>
                 </div>
-                <Button type="button" onClick={() => abrirRegistro(hoja.departamento)}>
-                  <Plus />
-                  Registrar fiado
-                </Button>
-                {fiados.error && (
+                {envios.error && (
                   <p role="alert" className="rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
-                    {mensajeDe(fiados.error, "No se pudo cargar los fiados.")}
+                    {mensajeDe(envios.error, "No se pudo cargar los envíos.")}
                   </p>
                 )}
-                {fiados.isPending ? (
-                  <p className="py-6 text-center text-sm text-ink-soft">Cargando fiados…</p>
-                ) : fiados.data?.length ? (
+                {envios.isPending ? (
+                  <p className="py-6 text-center text-sm text-ink-soft">Cargando envíos…</p>
+                ) : envios.data?.length ? (
                   <ul className="divide-y divide-line/70">
-                    {fiados.data.map((fiado) => (
-                      <FilaFiado
-                        key={fiado.id}
-                        fiado={fiado}
+                    {envios.data.map((envio) => (
+                      <FilaEnvio
+                        key={envio.id}
+                        envio={envio}
                         pagando={pagar.isPending}
                         onPagar={() => {
                           setAviso(null);
                           setErrorAccion(null);
-                          pagar.mutate(fiado.id);
+                          pagar.mutate(envio.id);
                         }}
                       />
                     ))}
                   </ul>
                 ) : (
                   <p className="py-6 text-center text-sm text-ink-soft">
-                    Aún no hay fiados para este departamento.
+                    Aún no hay envíos para este departamento.
                   </p>
                 )}
-              </div>
-            )}
-
-            {hoja.tipo === "registrar" && (
-              <div className="space-y-4">
-                <p className="text-sm text-ink-soft">{hoja.departamento.etiqueta}</p>
-                <form onSubmit={agregarLinea} className="space-y-3">
-                  <div>
-                    <label htmlFor="fiado-producto" className="text-xs font-semibold text-ink">
-                      Producto
-                    </label>
-                    <Select
-                      id="fiado-producto"
-                      value={productoId}
-                      onChange={setProductoId}
-                      className="mt-2"
-                      placeholder="Selecciona un producto"
-                      opciones={[
-                        { valor: "", etiqueta: "Selecciona un producto" },
-                        ...(productos.data ?? []).map((producto) => ({
-                          valor: String(producto.id),
-                          etiqueta: `${producto.nombre} · ${dinero(producto.precioVenta)} · ${cantidad(producto.stock)} ${producto.tipoVenta === "KILO" ? "kg" : "und"}`,
-                        })),
-                      ]}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="fiado-cantidad" className="text-xs font-semibold text-ink">
-                      Cantidad
-                    </label>
-                    <input
-                      id="fiado-cantidad"
-                      type="number"
-                      min="0.001"
-                      step="0.001"
-                      inputMode="decimal"
-                      value={cantidadTexto}
-                      onChange={(evento) => setCantidadTexto(evento.target.value)}
-                      className={cn(ESTILO_CAMPO, "mt-2")}
-                    />
-                  </div>
-                  <Button type="submit" variant="secondary" className="w-full">
-                    Agregar producto
-                  </Button>
-                </form>
-
-                {errorRegistro && (
-                  <p role="alert" className="rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
-                    {errorRegistro}
-                  </p>
-                )}
-
-                {lineas.length > 0 && (
-                  <div className="space-y-3">
-                    <ul className="divide-y divide-line/70 rounded-field border border-line px-4">
-                      {lineas.map((linea, indice) => {
-                        const producto = productos.data?.find((item) => item.id === linea.productoId);
-                        return (
-                          <li key={`${linea.productoId}-${indice}`} className="flex min-h-11 items-center justify-between gap-3 py-2">
-                            <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                              {producto?.nombre ?? `Producto ${linea.productoId}`} ·{" "}
-                              {cantidad(linea.cantidad)}
-                            </span>
-                            <button
-                              type="button"
-                              aria-label={`Quitar ${producto?.nombre ?? "producto"}`}
-                              onClick={() =>
-                                setLineas((actuales) => actuales.filter((_, i) => i !== indice))
-                              }
-                              className="flex size-11 items-center justify-center rounded-xl text-[#c75f53] hover:bg-danger/10"
-                            >
-                              ✕
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <p className="text-sm text-ink-soft">
-                      Total estimado: <span className="font-bold text-ink">{dinero(totalEstimado)}</span>
-                    </p>
-                  </div>
-                )}
-
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={lineas.length === 0 || registrar.isPending}
-                  onClick={() =>
-                    registrar.mutate({
-                      departamentoId: hoja.departamento.id,
-                      items: lineas,
-                    })
-                  }
-                >
-                  {registrar.isPending ? "Registrando…" : "Guardar fiado"}
-                </Button>
               </div>
             )}
 
@@ -802,11 +617,11 @@ export default function ClientesPage() {
               <div className="space-y-4">
                 {deudas.error && (
                   <p role="alert" className="rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
-                    {mensajeDe(deudas.error, "No se pudo cargar las deudas.")}
+                    {mensajeDe(deudas.error, "No se pudo cargar los envíos.")}
                   </p>
                 )}
                 {deudas.isPending ? (
-                  <p className="py-6 text-center text-sm text-ink-soft">Cargando deudas…</p>
+                  <p className="py-6 text-center text-sm text-ink-soft">Cargando envíos…</p>
                 ) : deudas.data?.length ? (
                   <div className="space-y-4">
                     {deudas.data.map((grupo) => (
@@ -816,7 +631,7 @@ export default function ClientesPage() {
                           <span className="text-sm font-bold text-[#c75f53]">{dinero(grupo.total)}</span>
                         </div>
                         <p className="mt-1 text-xs text-ink-soft">
-                          {grupo.cantidad} {grupo.cantidad === 1 ? "fiado pendiente" : "fiados pendientes"}
+                          {grupo.cantidad} {grupo.cantidad === 1 ? "envío activo" : "envíos activos"}
                         </p>
                         <div className="mt-3 space-y-3">
                           {grupo.departamentos.map((departamento) => (
@@ -825,15 +640,15 @@ export default function ClientesPage() {
                                 {departamento.etiqueta} · {dinero(departamento.total)}
                               </p>
                               <ul className="divide-y divide-line/70">
-                                {departamento.fiados.map((fiado) => (
-                                  <FilaFiado
-                                    key={fiado.id}
-                                    fiado={fiado}
+                                {departamento.fiados.map((envio) => (
+                                  <FilaEnvio
+                                    key={envio.id}
+                                    envio={envio}
                                     pagando={pagar.isPending}
                                     onPagar={() => {
                                       setAviso(null);
                                       setErrorAccion(null);
-                                      pagar.mutate(fiado.id);
+                                      pagar.mutate(envio.id);
                                     }}
                                   />
                                 ))}
@@ -845,7 +660,7 @@ export default function ClientesPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="py-6 text-center text-sm text-ink-soft">No hay fiados pendientes.</p>
+                  <p className="py-6 text-center text-sm text-ink-soft">No hay envíos activos.</p>
                 )}
               </div>
             )}
@@ -919,7 +734,7 @@ export default function ClientesPage() {
               </div>
 
               <p role="note" className="rounded-field bg-danger/10 p-4 text-xs leading-relaxed text-[#c75f53]">
-                Advertencia: toda venta registrada en una torre, piso o departamento que sea
+                Advertencia: toda venta o envío registrado en una torre, piso o departamento que sea
                 eliminado se eliminará de la caja, del registro de ventas y de las métricas del
                 dashboard. Esta acción no se puede deshacer.
               </p>
@@ -949,7 +764,7 @@ export default function ClientesPage() {
               <AlertTriangle size={32} strokeWidth={1.6} aria-hidden="true" className="mx-auto text-[#c75f53]" />
               <h3 className="mt-3 text-lg font-bold text-ink">No se puede eliminar</h3>
               <p className="mt-2 text-sm text-ink-soft">
-                Estos departamentos tienen cuentas pendientes y no se pueden quitar:
+                Estos departamentos tienen envíos activos y no se pueden quitar:
               </p>
               <p className="mt-3 rounded-field bg-danger/10 px-4 py-3 text-sm font-semibold text-[#c75f53]">
                 {bloqueo}

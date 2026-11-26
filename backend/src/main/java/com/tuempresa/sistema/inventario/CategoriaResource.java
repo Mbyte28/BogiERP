@@ -21,7 +21,7 @@ import java.util.List;
 
 @Path("/categorias")
 @Authenticated
-@RequiereModulo(Modulo.INVENTARIO)
+@RequiereModulo({Modulo.INVENTARIO})
 @Produces(MediaType.APPLICATION_JSON)
 public class CategoriaResource {
 

@@ -62,12 +62,16 @@ export default function App() {
                 }
               />
               <Route
-                path="clientes"
+                path="envios"
                 element={
                   <RequireModulo modulo="CLIENTES">
                     <ClientesPage />
                   </RequireModulo>
                 }
+              />
+              <Route
+                path="clientes"
+                element={<Navigate to="/envios" replace />}
               />
               <Route
                 path="caja"

@@ -19,7 +19,7 @@ import java.util.List;
 
 @Path("/mermas")
 @Authenticated
-@RequiereModulo(Modulo.INVENTARIO)
+@RequiereModulo({Modulo.INVENTARIO})
 @Produces(MediaType.APPLICATION_JSON)
 public class MermaResource {
 
