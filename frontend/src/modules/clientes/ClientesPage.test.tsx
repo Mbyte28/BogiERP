@@ -32,13 +32,18 @@ function fiadoInicial(): Fiado {
   };
 }
 
-function configuracion(configurado: boolean): ConfigEdificio {
+type Dimensiones = { torres: number; pisosPorTorre: number; deptosPorPiso: number };
+
+function configuracion(configurado: boolean, dimensiones?: Dimensiones): ConfigEdificio {
+  const torres = configurado ? (dimensiones?.torres ?? 1) : null;
+  const pisos = configurado ? (dimensiones?.pisosPorTorre ?? 1) : null;
+  const deptos = configurado ? (dimensiones?.deptosPorPiso ?? 2) : null;
   return {
     configurado,
-    torres: configurado ? 1 : null,
-    pisosPorTorre: configurado ? 1 : null,
-    deptosPorPiso: configurado ? 2 : null,
-    totalDepartamentos: configurado ? 2 : 0,
+    torres,
+    pisosPorTorre: pisos,
+    deptosPorPiso: deptos,
+    totalDepartamentos: configurado ? (torres ?? 0) * (pisos ?? 0) * (deptos ?? 0) : 0,
   };
 }
 
@@ -94,8 +99,20 @@ function simularApi({
   configurado = true,
   conFiado = true,
   fallar = false,
-}: { configurado?: boolean; conFiado?: boolean; fallar?: boolean } = {}) {
-  const estado = { configurado, fiados: conFiado ? [fiadoInicial()] : [] as Fiado[] };
+  bloquearEdicion = false,
+  torresIniciales = 1,
+}: {
+  configurado?: boolean;
+  conFiado?: boolean;
+  fallar?: boolean;
+  bloquearEdicion?: boolean;
+  torresIniciales?: number;
+} = {}) {
+  const estado = {
+    configurado,
+    fiados: conFiado ? [fiadoInicial()] : [] as Fiado[],
+    dimensiones: { torres: torresIniciales, pisosPorTorre: 1, deptosPorPiso: 2 },
+  };
   const peticiones = vi.fn<(url: string, init?: RequestInit) => void>();
 
   vi.stubGlobal(
@@ -110,9 +127,20 @@ function simularApi({
       if (url.includes("/edificio/config")) {
         if (metodo === "POST") {
           estado.configurado = true;
-          return respuesta(configuracion(true), 201);
+          estado.dimensiones = JSON.parse(String(init?.body)) as Dimensiones;
+          return respuesta(configuracion(true, estado.dimensiones), 201);
         }
-        return respuesta(configuracion(estado.configurado));
+        if (metodo === "PUT") {
+          if (bloquearEdicion) {
+            return respuesta(
+              { message: "No se puede eliminar: hay fiados pendientes en Torre 2 Departamento 101" },
+              409,
+            );
+          }
+          estado.dimensiones = JSON.parse(String(init?.body)) as Dimensiones;
+          return respuesta(configuracion(true, estado.dimensiones));
+        }
+        return respuesta(configuracion(estado.configurado, estado.dimensiones));
       }
       if (url.includes("/edificio/torres/1/pisos/1/departamentos")) {
         return respuesta(departamentos(estado.fiados));
@@ -332,5 +360,68 @@ describe("ClientesPage", () => {
     renderizar();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cargar el edificio.");
+  });
+
+  it("usa iconos distintos para torres, pisos y departamentos", async () => {
+    simularApi({ conFiado: false });
+    renderizar();
+
+    expect(await screen.findByRole("button", { name: "Ver torre 1" })).toBeInTheDocument();
+    expect(document.querySelector("svg.lucide-building")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver torre 1" }));
+    expect(await screen.findByRole("button", { name: "Ver piso 1 de la torre 1" })).toBeInTheDocument();
+    expect(document.querySelector("svg.lucide-door-stairwell")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver piso 1 de la torre 1" }));
+    expect(
+      await screen.findByRole("button", { name: "Ver fiados de Torre 1 Departamento 101" }),
+    ).toBeInTheDocument();
+    expect(document.querySelector("svg.lucide-house")).not.toBeNull();
+  });
+
+  it("muestra la advertencia y permite editar la estructura de torres", async () => {
+    const peticiones = simularApi({ conFiado: false });
+    renderizar();
+
+    await screen.findByRole("button", { name: "Ver torre 1" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar sistema de torres" }));
+
+    const modal = await screen.findByRole("dialog", { name: "Editar sistema de torres" });
+    expect(within(modal).getByText(/toda venta registrada/)).toBeInTheDocument();
+
+    fireEvent.change(within(modal).getByLabelText("Torres"), { target: { value: "2" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      const llamada = peticiones.mock.calls.find(
+        ([url, init]) => url.includes("/edificio/config") && init?.method === "PUT",
+      );
+      expect(llamada).toBeDefined();
+      expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({
+        torres: 2,
+        pisosPorTorre: 1,
+        deptosPorPiso: 2,
+      });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Editar sistema de torres" })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("centra un aviso con los departamentos que impiden eliminar una torre", async () => {
+    simularApi({ torresIniciales: 2, bloquearEdicion: true });
+    renderizar();
+
+    await screen.findByRole("button", { name: "Ver torre 1" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar sistema de torres" }));
+    const modal = await screen.findByRole("dialog", { name: "Editar sistema de torres" });
+    fireEvent.change(within(modal).getByLabelText("Torres"), { target: { value: "1" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Guardar cambios" }));
+
+    const aviso = await screen.findByRole("alertdialog", { name: "No se puede eliminar" });
+    expect(aviso).toHaveTextContent("Torre 2 Departamento 101");
+    fireEvent.click(within(aviso).getByRole("button", { name: "Entendido" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 });

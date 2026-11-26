@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.tuempresa.sistema.common.RolesDePrueba;
 import com.tuempresa.sistema.common.security.AuthResourceTest;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -19,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -28,6 +30,11 @@ class ClientesResourceTest {
 
     @Inject
     AgroalDataSource dataSource;
+
+    @AfterEach
+    void limpiarRoles() {
+        RolesDePrueba.limpiar(dataSource);
+    }
 
     @Test
     void configurarEdificioYnavegarPorNiveles() {
@@ -112,6 +119,174 @@ class ClientesResourceTest {
                 .then()
                 .statusCode(404)
                 .body("message", containsString("Torre no encontrada"));
+    }
+
+    @Test
+    void actualizarEdificioConservaDepartamentosYCreaLosNuevos() {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        configurarSiHaceFalta(token);
+        JsonPath inicial = configuracion(token);
+        int torres = inicial.getInt("torres");
+        int pisos = inicial.getInt("pisosPorTorre");
+        int deptos = inicial.getInt("deptosPorPiso");
+        int total = inicial.getInt("totalDepartamentos");
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"torres": %d, "pisosPorTorre": %d, "deptosPorPiso": %d}
+                        """.formatted(torres + 1, pisos, deptos))
+                .put("/edificio/config")
+                .then()
+                .statusCode(200)
+                .body("torres", equalTo(torres + 1))
+                .body("totalDepartamentos", equalTo(total + pisos * deptos));
+
+        given()
+                .cookie(COOKIE, token)
+                .get("/edificio/torres/1/pisos/1/departamentos")
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(deptos))
+                .body("[0].etiqueta", equalTo("Torre 1 Departamento 101"));
+    }
+
+    @Test
+    void actualizarEdificioNoEliminaDepartamentosConDeudaPendiente() {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        Dimensiones actuales = conAlMenosDosDepartamentos(token);
+        long productoId = crearProducto(token, "Deuda config " + sufijo(), "5.00", "2.00", "10");
+        long departamentoId = ultimoDepartamento(token, actuales.deptos);
+        long fiadoId = crearFiado(token, departamentoId, productoId);
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"torres": %d, "pisosPorTorre": %d, "deptosPorPiso": %d}
+                        """.formatted(actuales.torres, actuales.pisos, actuales.deptos - 1))
+                .put("/edificio/config")
+                .then()
+                .statusCode(409)
+                .body("message", containsString("fiados pendientes"))
+                .body("message", containsString("Torre 1 Departamento " + (100 + actuales.deptos)));
+
+        given()
+                .cookie(COOKIE, token)
+                .patch("/fiados/{id}/pagar", fiadoId)
+                .then()
+                .statusCode(200);
+    }
+
+    @Test
+    void actualizarEdificioBorraFiadosPagadosDeLosDepartamentosQuitados() throws Exception {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        Dimensiones actuales = conAlMenosDosDepartamentos(token);
+        long productoId = crearProducto(token, "Fiado quitado " + sufijo(), "5.00", "2.00", "10");
+        long departamentoId = ultimoDepartamento(token, actuales.deptos);
+        long fiadoId = crearFiado(token, departamentoId, productoId);
+
+        given()
+                .cookie(COOKIE, token)
+                .patch("/fiados/{id}/pagar", fiadoId)
+                .then()
+                .statusCode(200);
+        assertEquals("FIADO", movimientoDe(productoId).get(0));
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"torres": %d, "pisosPorTorre": %d, "deptosPorPiso": %d}
+                        """.formatted(actuales.torres, actuales.pisos, actuales.deptos - 1))
+                .put("/edificio/config")
+                .then()
+                .statusCode(200)
+                .body("deptosPorPiso", equalTo(actuales.deptos - 1));
+
+        given()
+                .cookie(COOKIE, token)
+                .get("/edificio/torres/1/pisos/1/departamentos")
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(actuales.deptos - 1));
+
+        assertEquals(0, contar("select count(*) from fiado where id = ?", fiadoId));
+        assertEquals(
+                0,
+                contar("select count(*) from movimiento_stock where tipo = 'FIADO' and referencia_id = ?", fiadoId));
+    }
+
+    private record Dimensiones(int torres, int pisos, int deptos) {
+    }
+
+    private JsonPath configuracion(String token) {
+        return given()
+                .cookie(COOKIE, token)
+                .get("/edificio/config")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath();
+    }
+
+    private Dimensiones conAlMenosDosDepartamentos(String token) {
+        configurarSiHaceFalta(token);
+        JsonPath config = configuracion(token);
+        int deptos = config.getInt("deptosPorPiso");
+        if (deptos >= 2) {
+            return new Dimensiones(config.getInt("torres"), config.getInt("pisosPorTorre"), deptos);
+        }
+        int torres = config.getInt("torres");
+        int pisos = config.getInt("pisosPorTorre");
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"torres": %d, "pisosPorTorre": %d, "deptosPorPiso": 2}
+                        """.formatted(torres, pisos))
+                .put("/edificio/config")
+                .then()
+                .statusCode(200);
+        return new Dimensiones(torres, pisos, 2);
+    }
+
+    private long ultimoDepartamento(String token, int deptos) {
+        return given()
+                .cookie(COOKIE, token)
+                .get("/edificio/torres/1/pisos/1/departamentos")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath()
+                .getLong("[%d].id".formatted(deptos - 1));
+    }
+
+    private long crearFiado(String token, long departamentoId, long productoId) {
+        return given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"departamentoId": %d, "items": [{"productoId": %d, "cantidad": 1}]}
+                        """.formatted(departamentoId, productoId))
+                .post("/fiados")
+                .then()
+                .statusCode(201)
+                .extract()
+                .jsonPath()
+                .getLong("[0].id");
+    }
+
+    private long contar(String sql, long parametro) throws Exception {
+        try (Connection conexion = dataSource.getConnection();
+                PreparedStatement consulta = conexion.prepareStatement(sql)) {
+            consulta.setLong(1, parametro);
+            try (ResultSet resultados = consulta.executeQuery()) {
+                assertTrue(resultados.next());
+                return resultados.getLong(1);
+            }
+        }
     }
 
     @Test

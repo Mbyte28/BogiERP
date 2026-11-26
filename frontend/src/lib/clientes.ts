@@ -101,6 +101,8 @@ export const clientesApi = {
   configuracion: () => api.get<ConfigEdificio>("/edificio/config"),
   configurar: (datos: DatosConfigEdificio) =>
     api.post<ConfigEdificio>("/edificio/config", datos),
+  reconfigurar: (datos: DatosConfigEdificio) =>
+    api.put<ConfigEdificio>("/edificio/config", datos),
 
   torres: () => api.get<Torre[]>("/edificio/torres"),
   pisos: (torre: number) => api.get<Piso[]>(`/edificio/torres/${torre}/pisos`),

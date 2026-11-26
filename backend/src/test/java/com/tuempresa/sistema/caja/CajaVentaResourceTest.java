@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.tuempresa.sistema.common.RolesDePrueba;
 import com.tuempresa.sistema.common.security.AuthResourceTest;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -16,6 +17,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -25,6 +27,11 @@ class CajaVentaResourceTest {
 
     @Inject
     AgroalDataSource dataSource;
+
+    @AfterEach
+    void limpiarRoles() {
+        RolesDePrueba.limpiar(dataSource);
+    }
 
     @Test
     void catalogoPonePrimeroLosMasVendidosYRespetaFiltros() {

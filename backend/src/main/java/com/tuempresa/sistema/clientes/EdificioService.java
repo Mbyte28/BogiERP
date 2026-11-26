@@ -12,6 +12,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @ApplicationScoped
@@ -36,6 +37,106 @@ public class EdificioService {
 
     @Transactional
     public ConfigEdificioResponse configurar(DatosConfigEdificio datos) {
+        int[] valores = validar(datos);
+        if (configuraciones.findById(ID_CONFIGURACION) != null) {
+            throw Errores.conflict("El edificio ya fue configurado");
+        }
+
+        entityManager.createNativeQuery("select fn_configurar_edificio(:torres, :pisos, :deptos)")
+                .setParameter("torres", valores[0])
+                .setParameter("pisos", valores[1])
+                .setParameter("deptos", valores[2])
+                .getResultList();
+        return configuracion();
+    }
+
+    /**
+     * Ajusta torres, pisos y departamentos conservando los departamentos que siguen
+     * existiendo. Los que se quitan se eliminan junto con sus fiados y movimientos
+     * de stock; nunca se permite borrar un departamento con deuda pendiente.
+     */
+    @Transactional
+    public ConfigEdificioResponse actualizar(DatosConfigEdificio datos) {
+        int[] valores = validar(datos);
+        int torres = valores[0];
+        int pisos = valores[1];
+        int deptos = valores[2];
+        ConfigEdificio config = requerirConfiguracion();
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> eliminados = entityManager.createNativeQuery(
+                        "select id, etiqueta from departamento "
+                                + "where torre > :torres or piso > :pisos "
+                                + "or (numero - piso * 100) > :deptos "
+                                + "order by torre, piso, numero")
+                .setParameter("torres", torres)
+                .setParameter("pisos", pisos)
+                .setParameter("deptos", deptos)
+                .getResultList();
+
+        if (!eliminados.isEmpty()) {
+            List<Long> ids = eliminados.stream()
+                    .map(fila -> ((Number) fila[0]).longValue())
+                    .toList();
+
+            @SuppressWarnings("unchecked")
+            List<String> conDeuda = entityManager.createNativeQuery(
+                            "select distinct d.etiqueta from departamento d "
+                                    + "join fiado f on f.departamento_id = d.id "
+                                    + "where d.id in (:ids) and f.estado = 'PENDIENTE' "
+                                    + "order by d.etiqueta")
+                    .setParameter("ids", ids)
+                    .getResultList();
+            if (!conDeuda.isEmpty()) {
+                throw Errores.conflict("No se puede eliminar: hay fiados pendientes en "
+                        + String.join(", ", conDeuda));
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Long> fiadoIds = entityManager.createNativeQuery(
+                            "select id from fiado where departamento_id in (:ids)")
+                    .setParameter("ids", ids)
+                    .getResultList();
+            if (!fiadoIds.isEmpty()) {
+                entityManager.createNativeQuery(
+                                "delete from movimiento_stock "
+                                        + "where tipo = 'FIADO' and referencia_id in (:ids)")
+                        .setParameter("ids", fiadoIds)
+                        .executeUpdate();
+                entityManager.createNativeQuery("delete from fiado where departamento_id in (:ids)")
+                        .setParameter("ids", ids)
+                        .executeUpdate();
+            }
+            entityManager.createNativeQuery("delete from departamento where id in (:ids)")
+                    .setParameter("ids", ids)
+                    .executeUpdate();
+        }
+
+        entityManager.createNativeQuery("""
+                        insert into departamento (torre, piso, numero, etiqueta)
+                        select gt, gp, gp * 100 + gd,
+                               'Torre ' || gt || ' Departamento ' || (gp * 100 + gd)
+                        from generate_series(1, :torres) gt,
+                             generate_series(1, :pisos) gp,
+                             generate_series(1, :deptos) gd
+                        where not exists (
+                            select 1 from departamento d
+                            where d.torre = gt and d.numero = gp * 100 + gd
+                        )
+                        """)
+                .setParameter("torres", torres)
+                .setParameter("pisos", pisos)
+                .setParameter("deptos", deptos)
+                .executeUpdate();
+
+        config.torres = torres;
+        config.pisosPorTorre = pisos;
+        config.deptosPorPiso = deptos;
+        config.configuradoEn = Instant.now();
+        return aRespuesta(config);
+    }
+
+    private int[] validar(DatosConfigEdificio datos) {
         Integer torres = datos.torres();
         Integer pisos = datos.pisosPorTorre();
         Integer deptos = datos.deptosPorPiso();
@@ -46,16 +147,7 @@ public class EdificioService {
         if ((long) torres * pisos * deptos > MAXIMO_DEPARTAMENTOS) {
             throw Errores.badRequest("La configuración supera el máximo de 10000 departamentos");
         }
-        if (configuraciones.findById(ID_CONFIGURACION) != null) {
-            throw Errores.conflict("El edificio ya fue configurado");
-        }
-
-        entityManager.createNativeQuery("select fn_configurar_edificio(:torres, :pisos, :deptos)")
-                .setParameter("torres", torres)
-                .setParameter("pisos", pisos)
-                .setParameter("deptos", deptos)
-                .getResultList();
-        return configuracion();
+        return new int[] {torres, pisos, deptos};
     }
 
     @Transactional

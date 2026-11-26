@@ -9,19 +9,31 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.tuempresa.sistema.common.RolesDePrueba;
 import com.tuempresa.sistema.common.security.AuthResourceTest;
+import io.agroal.api.AgroalDataSource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class CuentasResourceTest {
 
     private static final String COOKIE = "access_token";
+
+    @Inject
+    AgroalDataSource dataSource;
+
+    @AfterEach
+    void limpiarRoles() {
+        RolesDePrueba.limpiar(dataSource);
+    }
 
     @Test
     void elPrincipalPuedeListarUsuariosYRoles() {
@@ -225,6 +237,35 @@ class CuentasResourceTest {
                 .then()
                 .statusCode(400)
                 .body("message", containsString("principal"));
+    }
+
+    @Test
+    void noSePuedenCrearMasDeSeisRolesSinContarElPrincipal() {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        String marca = sufijo();
+
+        for (int indice = 1; indice <= 5; indice++) {
+            given()
+                    .cookie(COOKIE, token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"nombre": "Límite %d %s", "modulos": []}
+                            """.formatted(indice, marca))
+                    .post("/roles")
+                    .then()
+                    .statusCode(201);
+        }
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"nombre": "Séptimo %s", "modulos": []}
+                        """.formatted(marca))
+                .post("/roles")
+                .then()
+                .statusCode(409)
+                .body("message", containsString("6 roles"));
     }
 
     @Test

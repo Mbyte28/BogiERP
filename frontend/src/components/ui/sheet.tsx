@@ -14,7 +14,7 @@ function SheetContent({
   title = "Menú",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  side?: "left" | "bottom";
+  side?: "left" | "bottom" | "center";
   title?: string;
 }) {
   return (
@@ -26,7 +26,9 @@ function SheetContent({
           "fixed z-50 flex flex-col bg-surface p-5 outline-none",
           side === "left"
             ? "sheet-left inset-y-0 left-0 h-dvh w-[min(86vw,320px)] rounded-r-3xl"
-            : "sheet-bottom inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
+            : side === "center"
+              ? "sheet-center inset-0 m-auto h-fit max-h-[85dvh] w-[min(92vw,480px)] overflow-y-auto rounded-3xl"
+              : "sheet-bottom inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
           className,
         )}
         {...props}

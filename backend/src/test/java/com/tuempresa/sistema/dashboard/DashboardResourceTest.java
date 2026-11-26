@@ -7,15 +7,19 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.tuempresa.sistema.common.RolesDePrueba;
 import com.tuempresa.sistema.common.security.AuthResourceTest;
+import io.agroal.api.AgroalDataSource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.path.json.JsonPath;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -23,6 +27,14 @@ class DashboardResourceTest {
 
     private static final String COOKIE = "access_token";
     private static final ZoneId ZONA = ZoneId.of("America/Lima");
+
+    @Inject
+    AgroalDataSource dataSource;
+
+    @AfterEach
+    void limpiarRoles() {
+        RolesDePrueba.limpiar(dataSource);
+    }
 
     @Test
     void resumenCombinaVentasMermasYFiadosPagados() {

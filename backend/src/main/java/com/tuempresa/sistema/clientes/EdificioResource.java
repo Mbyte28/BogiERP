@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -42,6 +43,13 @@ public class EdificioResource {
         return Response.status(Response.Status.CREATED)
                 .entity(servicio.configurar(datos))
                 .build();
+    }
+
+    @PUT
+    @Path("/config")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public ConfigEdificioResponse actualizar(@Valid DatosConfigEdificio datos) {
+        return servicio.actualizar(datos);
     }
 
     @GET

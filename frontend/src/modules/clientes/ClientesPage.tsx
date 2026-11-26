@@ -1,6 +1,17 @@
 import { useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ClipboardList, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Building,
+  ClipboardList,
+  DoorStairwell,
+  House,
+  Plus,
+  Settings2,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +44,7 @@ type CuadroDatos = {
   pie: string;
   conDeuda: boolean;
   etiqueta: string;
+  Icono: LucideIcon;
   alSeleccionar: () => void;
 };
 
@@ -41,16 +53,18 @@ function mensajeDe(error: unknown, respaldo: string): string {
 }
 
 function Cuadro({ datos }: { datos: CuadroDatos }) {
+  const Icono = datos.Icono;
   return (
     <button
       type="button"
       aria-label={datos.etiqueta}
       onClick={datos.alSeleccionar}
       className={cn(
-        "flex aspect-square min-h-28 w-full flex-col items-center justify-center gap-1 rounded-card border px-2 py-3 text-center shadow-card outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary-500/40",
+        "flex aspect-square min-h-28 w-full max-w-60 flex-col items-center justify-center gap-1 rounded-card border px-2 py-3 text-center shadow-card outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary-500/40",
         datos.conDeuda ? "border-danger bg-danger/10" : "border-success/70 bg-success/10",
       )}
     >
+      <Icono size={30} strokeWidth={1.6} aria-hidden="true" className="text-primary-500" />
       <span
         aria-hidden="true"
         className={cn("size-2.5 rounded-full", datos.conDeuda ? "bg-danger" : "bg-success-strong")}
@@ -117,6 +131,13 @@ export default function ClientesPage() {
   const [deptosTexto, setDeptosTexto] = useState("1");
   const [errorConfig, setErrorConfig] = useState<string | null>(null);
 
+  const [editando, setEditando] = useState(false);
+  const [editarTorres, setEditarTorres] = useState("1");
+  const [editarPisos, setEditarPisos] = useState("1");
+  const [editarDeptos, setEditarDeptos] = useState("1");
+  const [errorEdicion, setErrorEdicion] = useState<string | null>(null);
+  const [bloqueo, setBloqueo] = useState<string | null>(null);
+
   const [productoId, setProductoId] = useState("");
   const [cantidadTexto, setCantidadTexto] = useState("1");
   const [lineas, setLineas] = useState<ItemFiado[]>([]);
@@ -177,6 +198,24 @@ export default function ClientesPage() {
     },
   });
 
+  const reconfigurar = useMutation({
+    mutationFn: clientesApi.reconfigurar,
+    onSuccess: async () => {
+      setEditando(false);
+      setErrorEdicion(null);
+      setBloqueo(null);
+      setTorre(null);
+      setPiso(null);
+      setAviso("Estructura del edificio actualizada.");
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (error) => {
+      const mensaje = mensajeDe(error, "No se pudo actualizar la estructura del edificio.");
+      setErrorEdicion(mensaje);
+      if (error instanceof ApiError && error.status === 409) setBloqueo(mensaje);
+    },
+  });
+
   const pagar = useMutation({
     mutationFn: clientesApi.pagar,
     onSuccess: async () => {
@@ -221,6 +260,37 @@ export default function ClientesPage() {
     }
     setErrorConfig(null);
     configurar.mutate({
+      torres: valores[0],
+      pisosPorTorre: valores[1],
+      deptosPorPiso: valores[2],
+    });
+  }
+
+  function abrirEditor() {
+    setEditarTorres(String(config.data?.torres ?? 1));
+    setEditarPisos(String(config.data?.pisosPorTorre ?? 1));
+    setEditarDeptos(String(config.data?.deptosPorPiso ?? 1));
+    setErrorEdicion(null);
+    setBloqueo(null);
+    setEditando(true);
+  }
+
+  function enviarEdicion(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const valores = [Number(editarTorres), Number(editarPisos), Number(editarDeptos)];
+    if (
+      valores.some((valor) => !Number.isInteger(valor) || valor < 1) ||
+      valores[2] > 99 ||
+      valores[0] * valores[1] * valores[2] > 10000
+    ) {
+      setErrorEdicion(
+        "Ingresa valores enteros positivos, hasta 99 departamentos por piso y un máximo de 10000 departamentos.",
+      );
+      return;
+    }
+    setErrorEdicion(null);
+    setBloqueo(null);
+    reconfigurar.mutate({
       torres: valores[0],
       pisosPorTorre: valores[1],
       deptosPorPiso: valores[2],
@@ -282,6 +352,7 @@ export default function ClientesPage() {
         pie: departamento.conDeuda ? dinero(departamento.totalPendiente) : "Al día",
         conDeuda: departamento.conDeuda,
         etiqueta: `Ver fiados de ${departamento.etiqueta}`,
+        Icono: House,
         alSeleccionar: () => abrirFiados(departamento),
       }));
     }
@@ -295,7 +366,15 @@ export default function ClientesPage() {
           : "Al día",
         conDeuda: item.departamentosConDeuda > 0,
         etiqueta: `Ver piso ${item.piso} de la torre ${torre}`,
-        alSeleccionar: () => setPiso(item.piso),
+        Icono: DoorStairwell,
+        alSeleccionar: () => {
+          void queryClient
+            .prefetchQuery({
+              queryKey: ["clientes", "departamentos", torre, item.piso],
+              queryFn: () => clientesApi.departamentos(torre, item.piso),
+            })
+            .finally(() => setPiso(item.piso));
+        },
       }));
     }
     return (torres.data ?? []).map((item) => ({
@@ -307,6 +386,7 @@ export default function ClientesPage() {
         : "Al día",
       conDeuda: item.departamentosConDeuda > 0,
       etiqueta: `Ver torre ${item.torre}`,
+      Icono: Building,
       alSeleccionar: () => setTorre(item.torre),
     }));
   }
@@ -404,7 +484,7 @@ export default function ClientesPage() {
     ? `Torre ${torre} · Piso ${piso}`
     : torre !== null
       ? `Torre ${torre}`
-      : "Torres del edificio";
+      : null;
   const totalEstimado = lineas.reduce((suma, linea) => {
     const producto = productos.data?.find((item) => item.id === linea.productoId);
     return suma + (producto ? Number(producto.precioVenta) * linea.cantidad : 0);
@@ -424,30 +504,41 @@ export default function ClientesPage() {
               {piso !== null ? "Volver a pisos" : "Volver a torres"}
             </button>
           )}
-          <h2 className="mt-1 text-lg font-bold tracking-tight text-ink sm:text-xl">{titulo}</h2>
+          {titulo && (
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-ink sm:text-xl">{titulo}</h2>
+          )}
           <p className="mt-1 text-sm text-ink-soft">
             {config.data?.totalDepartamentos} departamentos · elige un cuadrado para continuar.
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setAviso(null);
-            setErrorAccion(null);
-            setHoja({ tipo: "deudas" });
-          }}
-        >
-          <ClipboardList />
-          Revisar fiados
+        <Button type="button" aria-label="Editar sistema de torres" onClick={abrirEditor}>
+          <Settings2 />
+          Editar sistema de torres
         </Button>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>{piso !== null ? "Departamentos" : torre !== null ? "Pisos" : "Torres"}</CardTitle>
-          <p className="text-sm text-ink-soft">
-            Coral indica fiados pendientes; menta significa que está al día.
-          </p>
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>{piso !== null ? "Departamentos" : torre !== null ? "Pisos" : "Torres"}</CardTitle>
+            <p className="text-sm text-ink-soft">
+              Coral indica fiados pendientes; menta significa que está al día.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            aria-label="Revisar fiados"
+            onClick={() => {
+              setAviso(null);
+              setErrorAccion(null);
+              setHoja({ tipo: "deudas" });
+            }}
+          >
+            <ClipboardList />
+            <span className="hidden sm:inline">Revisar fiados</span>
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {nivelActual.error && (
@@ -455,17 +546,26 @@ export default function ClientesPage() {
               {mensajeDe(nivelActual.error, "No se pudo cargar esta información.")}
             </p>
           )}
-          {nivelActual.isPending ? (
-            <p className="py-8 text-center text-sm text-ink-soft">Cargando…</p>
-          ) : items.length ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-              {items.map((datos) => (
-                <Cuadro key={datos.clave} datos={datos} />
-              ))}
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-ink-soft">Aún no hay datos para mostrar.</p>
-          )}
+          <div className="flex min-h-[24rem] items-center justify-center rounded-field border border-line/60 bg-app/40 p-4">
+            {nivelActual.isPending ? (
+              <div className="grid w-full max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {[0, 1, 2].map((indice) => (
+                  <div
+                    key={indice}
+                    className="aspect-square min-h-28 w-full max-w-60 rounded-card border border-line bg-surface/70"
+                  />
+                ))}
+              </div>
+            ) : items.length ? (
+              <div className="grid w-full max-w-4xl grid-cols-1 gap-5 justify-items-center sm:grid-cols-2 lg:grid-cols-3">
+                {items.map((datos) => (
+                  <Cuadro key={datos.clave} datos={datos} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-ink-soft">Aún no hay datos para mostrar.</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -703,6 +803,115 @@ export default function ClientesPage() {
           </SheetContent>
         )}
       </Sheet>
+
+      <Sheet
+        open={editando}
+        onOpenChange={(abierto) => {
+          setEditando(abierto);
+          if (!abierto) {
+            setErrorEdicion(null);
+            setBloqueo(null);
+          }
+        }}
+      >
+        {editando && (
+          <SheetContent side="center" title="Editar sistema de torres">
+            <div className="mb-5 pr-10">
+              <h3 className="text-lg font-bold tracking-tight text-ink">
+                Editar sistema de torres
+              </h3>
+              <p className="mt-1 text-sm text-ink-soft">
+                Ajusta la cantidad de torres, pisos por torre y departamentos por piso.
+              </p>
+            </div>
+            <form onSubmit={enviarEdicion} className="space-y-4">
+              <div>
+                <label htmlFor="editar-torres" className="text-xs font-semibold text-ink">
+                  Torres
+                </label>
+                <input
+                  id="editar-torres"
+                  type="number"
+                  min="1"
+                  required
+                  value={editarTorres}
+                  onChange={(evento) => setEditarTorres(evento.target.value)}
+                  className={cn(ESTILO_CAMPO, "mt-2")}
+                />
+              </div>
+              <div>
+                <label htmlFor="editar-pisos" className="text-xs font-semibold text-ink">
+                  Pisos por torre
+                </label>
+                <input
+                  id="editar-pisos"
+                  type="number"
+                  min="1"
+                  required
+                  value={editarPisos}
+                  onChange={(evento) => setEditarPisos(evento.target.value)}
+                  className={cn(ESTILO_CAMPO, "mt-2")}
+                />
+              </div>
+              <div>
+                <label htmlFor="editar-deptos" className="text-xs font-semibold text-ink">
+                  Departamentos por piso
+                </label>
+                <input
+                  id="editar-deptos"
+                  type="number"
+                  min="1"
+                  max="99"
+                  required
+                  value={editarDeptos}
+                  onChange={(evento) => setEditarDeptos(evento.target.value)}
+                  className={cn(ESTILO_CAMPO, "mt-2")}
+                />
+              </div>
+
+              <p role="note" className="rounded-field bg-danger/10 p-4 text-xs leading-relaxed text-[#c75f53]">
+                Advertencia: toda venta registrada en una torre, piso o departamento que sea
+                eliminado se eliminará de la caja, del registro de ventas y de las métricas del
+                dashboard. Esta acción no se puede deshacer.
+              </p>
+
+              {errorEdicion && (
+                <p role="alert" className="rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
+                  {errorEdicion}
+                </p>
+              )}
+
+              <Button type="submit" className="w-full" disabled={reconfigurar.isPending}>
+                {reconfigurar.isPending ? "Guardando…" : "Guardar cambios"}
+              </Button>
+            </form>
+          </SheetContent>
+        )}
+      </Sheet>
+
+      {bloqueo &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/50 p-4">
+            <div
+              role="alertdialog"
+              aria-label="No se puede eliminar"
+              className="w-full max-w-md rounded-3xl bg-surface p-6 text-center shadow-card"
+            >
+              <AlertTriangle size={32} strokeWidth={1.6} aria-hidden="true" className="mx-auto text-[#c75f53]" />
+              <h3 className="mt-3 text-lg font-bold text-ink">No se puede eliminar</h3>
+              <p className="mt-2 text-sm text-ink-soft">
+                Estos departamentos tienen cuentas pendientes y no se pueden quitar:
+              </p>
+              <p className="mt-3 rounded-field bg-danger/10 px-4 py-3 text-sm font-semibold text-[#c75f53]">
+                {bloqueo}
+              </p>
+              <Button type="button" className="mt-5 w-full" onClick={() => setBloqueo(null)}>
+                Entendido
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

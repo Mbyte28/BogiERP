@@ -17,6 +17,8 @@ import java.util.Set;
 @ApplicationScoped
 public class RolService {
 
+    private static final long MAXIMO_ROLES = 6;
+
     @Inject
     RolRepository roles;
 
@@ -36,6 +38,10 @@ public class RolService {
         String nombre = solicitud.nombre().trim();
         if (roles.existeNombre(nombre)) {
             throw Errores.conflict("Ya existe un rol con ese nombre");
+        }
+        if (roles.contarNoPrincipales() >= MAXIMO_ROLES) {
+            throw Errores.conflict(
+                    "Máximo " + MAXIMO_ROLES + " roles permitidos (sin contar el principal)");
         }
 
         Set<Modulo> seleccionados = modulosValidos(solicitud.modulos());

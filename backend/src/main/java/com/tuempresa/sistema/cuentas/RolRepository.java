@@ -20,4 +20,8 @@ public class RolRepository implements PanacheRepository<Rol> {
     public boolean existeNombre(String nombre) {
         return count("lower(nombre) = ?1", nombre.toLowerCase(Locale.ROOT)) > 0;
     }
+
+    public long contarNoPrincipales() {
+        return count("esPrincipal = false");
+    }
 }
