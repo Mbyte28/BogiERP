@@ -6,15 +6,16 @@ import {
   ChevronRight,
   Plus,
   Search,
+  ShoppingBasket,
   ShoppingCart,
   Trash2,
-  Truck,
   Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useTicket } from "@/contexts/TicketContext";
 import { ApiError } from "@/lib/api";
 import { cajaApi } from "@/lib/caja";
 import {
@@ -51,7 +52,7 @@ export default function VentaPage() {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [pagina, setPagina] = useState(0);
-  const [lineas, setLineas] = useState<LineaTicket[]>([]);
+  const { lineas, setLineas, limpiar } = useTicket();
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
   const [recibido, setRecibido] = useState("");
   const [efectivo, setEfectivo] = useState("");
@@ -83,7 +84,7 @@ export default function VentaPage() {
     mutationFn: (datos: SolicitudVenta) => ventaApi.registrar(datos),
     onSuccess: async (venta) => {
       setVentaExitosa(venta);
-      setLineas([]);
+      limpiar();
       setAvisoEnvio(null);
       setRecibido("");
       setEfectivo("");
@@ -212,6 +213,8 @@ export default function VentaPage() {
       onCantidad={cambiarCantidad}
       onQuitar={quitar}
       onFinalizar={finalizar}
+      onEnviar={() => setEnvioAbierto(true)}
+      avisoEnvio={avisoEnvio}
     />
   );
 
@@ -224,24 +227,6 @@ export default function VentaPage() {
         <p className="mt-1 text-sm text-ink-soft">
           Elige los productos y cobra en efectivo, por transferencia o ambos.
         </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          aria-label="Envío"
-          variant="secondary"
-          disabled={lineas.length === 0}
-          onClick={() => setEnvioAbierto(true)}
-        >
-          <Truck />
-          Envío
-        </Button>
-        {avisoEnvio && (
-          <p role="status" className="text-sm font-semibold text-[#3d8f83]">
-            {avisoEnvio}
-          </p>
-        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
@@ -453,7 +438,7 @@ export default function VentaPage() {
         onOpenChange={setEnvioAbierto}
         lineas={lineas}
         onEnviado={() => {
-          setLineas([]);
+          limpiar();
           setAvisoEnvio("Envío registrado.");
         }}
       />
@@ -563,6 +548,8 @@ interface TicketProps {
   onCantidad: (id: number, valor: string) => void;
   onQuitar: (id: number) => void;
   onFinalizar: () => void;
+  onEnviar: () => void;
+  avisoEnvio: string | null;
 }
 
 function Ticket({
@@ -582,6 +569,8 @@ function Ticket({
   onCantidad,
   onQuitar,
   onFinalizar,
+  onEnviar,
+  avisoEnvio,
 }: TicketProps) {
   const recibidoNumero = Number(recibido);
   const efectivoNumero = Number(efectivo);
@@ -589,22 +578,41 @@ function Ticket({
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <CardTitle>Ticket</CardTitle>
-          <span
-            aria-hidden="true"
-            className={`size-2 shrink-0 rounded-full ${
-              cajaAbierta ? "bg-success-strong" : "bg-danger"
-            }`}
-          />
-          <span
-            className={`text-sm font-semibold ${
-              cajaAbierta ? "text-[#3d8f83]" : "text-[#c75f53]"
-            }`}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <CardTitle>Ticket</CardTitle>
+            <span
+              aria-hidden="true"
+              className={`size-2 shrink-0 rounded-full ${
+                cajaAbierta ? "bg-success-strong" : "bg-danger"
+              }`}
+            />
+            <span
+              className={`text-sm font-semibold ${
+                cajaAbierta ? "text-[#3d8f83]" : "text-[#c75f53]"
+              }`}
+            >
+              {cajaAbierta ? "Caja abierta" : "Caja cerrada"}
+            </span>
+          </div>
+          <Button
+            type="button"
+            aria-label="Envío"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            disabled={lineas.length === 0}
+            onClick={onEnviar}
           >
-            {cajaAbierta ? "Caja abierta" : "Caja cerrada"}
-          </span>
+            <ShoppingBasket />
+            Envío
+          </Button>
         </div>
+        {avisoEnvio && (
+          <p role="status" className="text-sm font-semibold text-[#3d8f83]">
+            {avisoEnvio}
+          </p>
+        )}
         <p className="text-sm text-ink-soft">
           {lineas.length} {lineas.length === 1 ? "producto" : "productos"}
         </p>

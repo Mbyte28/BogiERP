@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TicketProvider } from "@/contexts/TicketContext";
 import { crearQueryClient } from "@/lib/queryClient";
 import App from "./App";
 import "./index.css";
@@ -17,7 +18,9 @@ createRoot(contenedor).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <App />
+        <TicketProvider>
+          <App />
+        </TicketProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,

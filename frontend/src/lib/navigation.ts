@@ -2,8 +2,8 @@ import {
   History,
   LayoutDashboard,
   Package,
+  ShoppingBasket,
   ShoppingCart,
-  Truck,
   UserCog,
   Wallet,
   type LucideIcon,
@@ -42,7 +42,7 @@ export const MODULOS: readonly Modulo[] = [
   },
   {
     key: "VENTA",
-    nombre: "Registrar venta",
+    nombre: "Ventas",
     nombreCorto: "Venta",
     ruta: "/venta",
     descripcion: "Catálogo de productos, ticket y cobro en efectivo o transferencia",
@@ -62,7 +62,7 @@ export const MODULOS: readonly Modulo[] = [
     nombreCorto: "Envíos",
     ruta: "/envios",
     descripcion: "Torres, pisos, departamentos y envíos activos o pagados",
-    icono: Truck,
+    icono: ShoppingBasket,
   },
   {
     key: "CAJA",

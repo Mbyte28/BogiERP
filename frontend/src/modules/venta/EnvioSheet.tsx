@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building, DoorStairwell, House, Truck, type LucideIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Building,
+  DoorStairwell,
+  House,
+  ShoppingBasket,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ApiError } from "@/lib/api";
@@ -260,7 +267,7 @@ export function EnvioSheet({ abierto, onOpenChange, lineas, onEnviado }: EnvioSh
           disabled={!departamento || lineas.length === 0 || registrar.isPending}
           onClick={confirmar}
         >
-          <Truck />
+          <ShoppingBasket />
           {registrar.isPending ? "Registrando…" : "Confirmar envío"}
         </Button>
       </SheetContent>

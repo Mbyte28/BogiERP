@@ -83,7 +83,7 @@ describe("CuentasPage", () => {
     const editor = screen
       .getByRole("button", { name: "Guardar permisos" })
       .closest("li") as HTMLElement;
-    expect(within(editor).getByLabelText("Registrar venta")).toBeChecked();
+    expect(within(editor).getByLabelText("Ventas")).toBeChecked();
     expect(within(editor).getByLabelText("Caja")).toBeChecked();
   });
 
@@ -106,7 +106,7 @@ describe("CuentasPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ver permisos de TRABAJADOR" }));
     const botonGuardar = screen.getByRole("button", { name: "Guardar permisos" });
     const editor = botonGuardar.closest("li") as HTMLElement;
-    fireEvent.click(within(editor).getByLabelText("Registrar venta"));
+    fireEvent.click(within(editor).getByLabelText("Ventas"));
     fireEvent.click(within(editor).getByLabelText("Envíos"));
     fireEvent.click(botonGuardar);
 
@@ -191,7 +191,7 @@ describe("CuentasPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ver permisos de TRABAJADOR" }));
     const editor = screen.getByRole("button", { name: "Guardar permisos" }).closest("li") as HTMLElement;
-    expect(within(editor).getByLabelText("Registrar venta")).toBeChecked();
+    expect(within(editor).getByLabelText("Ventas")).toBeChecked();
     expect(screen.getAllByRole("button", { name: "Guardar permisos" })).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Ver permisos de Supervisor" })).toHaveAttribute(
       "aria-expanded",

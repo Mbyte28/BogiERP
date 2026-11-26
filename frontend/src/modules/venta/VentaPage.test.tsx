@@ -1,7 +1,9 @@
+import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
+import { TicketProvider } from "@/contexts/TicketContext";
 import type { CajaActual } from "@/lib/caja";
 import type { PaginaCatalogo, VentaResponse } from "@/lib/venta";
 import VentaPage from "./VentaPage";
@@ -187,12 +189,12 @@ function simularApi(
   return peticiones;
 }
 
-function renderizar() {
+function renderizar(contenido: ReactNode = <VentaPage />) {
   const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={cliente}>
       <MemoryRouter>
-        <VentaPage />
+        <TicketProvider>{contenido}</TicketProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -310,6 +312,10 @@ describe("VentaPage", () => {
     expect(estado.className).not.toContain("bg-");
     expect(estado.parentElement).toHaveTextContent("Ticket");
     expect(estado.parentElement?.querySelector(".rounded-full")).not.toBeNull();
+
+    const botonEnvio = screen.getByRole("button", { name: "Envío" });
+    expect(botonEnvio.closest(".rounded-card")).toHaveTextContent("Ticket");
+    expect(estado.parentElement?.parentElement?.lastElementChild).toBe(botonEnvio);
     expect(screen.queryByText(/Los más vendidos aparecen primero/)).not.toBeInTheDocument();
   });
 
@@ -404,5 +410,35 @@ describe("VentaPage", () => {
     expect(await within(hoja).findByRole("status")).toHaveTextContent("ya no existe");
     expect(within(hoja).getByRole("button", { name: "Torre 1" })).toBeInTheDocument();
     expect(within(hoja).getByRole("button", { name: "Confirmar envío" })).toBeDisabled();
+  });
+
+  it("conserva los productos del ticket al cambiar de módulo", async () => {
+    simularApi();
+
+    function ConCambioDeModulo() {
+      const [enVenta, setEnVenta] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setEnVenta((actual) => !actual)}>
+            Cambiar módulo
+          </button>
+          {enVenta ? <VentaPage /> : <p>Otro módulo</p>}
+        </>
+      );
+    }
+
+    renderizar(<ConCambioDeModulo />);
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
+    expect(screen.getByLabelText("Cantidad de Leche entera")).toHaveValue(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar módulo" }));
+    expect(screen.getByText("Otro módulo")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Cantidad de Leche entera")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar módulo" }));
+    expect(await screen.findByLabelText("Cantidad de Leche entera")).toHaveValue(1);
+    expect(screen.getByRole("button", { name: "Envío" })).toBeEnabled();
   });
 });
