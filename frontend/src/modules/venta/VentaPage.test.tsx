@@ -75,6 +75,7 @@ function simularApi(
   caja: CajaActual = cajaAbierta,
   ventaNoDisponible = false,
   ubicacionEliminada = false,
+  demorarCatalogo = false,
 ) {
   const peticiones = vi.fn<(url: string, init?: RequestInit) => void>();
   vi.stubGlobal(
@@ -88,7 +89,14 @@ function simularApi(
       if (url.includes("/categorias")) {
         return respuesta([{ id: 4, nombre: "Lácteos", icono: "milk", productos: 1 }]);
       }
-      if (url.includes("/catalogo")) return respuesta(catalogo);
+      if (url.includes("/catalogo")) {
+        if (demorarCatalogo && url.includes("q=")) {
+          return new Promise<Response>((resolver) => {
+            setTimeout(() => resolver(respuesta(catalogo)), 200);
+          });
+        }
+        return respuesta(catalogo);
+      }
       if (url.includes("/edificio/config")) {
         return respuesta({
           configurado: true,
@@ -410,6 +418,23 @@ describe("VentaPage", () => {
     expect(await within(hoja).findByRole("status")).toHaveTextContent("ya no existe");
     expect(within(hoja).getByRole("button", { name: "Torre 1" })).toBeInTheDocument();
     expect(within(hoja).getByRole("button", { name: "Confirmar envío" })).toBeDisabled();
+  });
+
+  it("mantiene los productos a la vista mientras carga una nueva búsqueda", async () => {
+    simularApi(cajaAbierta, false, false, true);
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.change(screen.getByLabelText("Buscar productos"), {
+      target: { value: "leche" },
+    });
+
+    expect(await screen.findByText("Actualizando productos…")).toBeInTheDocument();
+    expect(screen.getAllByText("Leche entera").length).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(screen.queryByText("Actualizando productos…")).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByText("Leche entera").length).toBeGreaterThan(0);
   });
 
   it("conserva los productos del ticket al cambiar de módulo", async () => {

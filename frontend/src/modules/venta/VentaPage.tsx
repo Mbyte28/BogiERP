@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  LoaderCircle,
   Plus,
   Search,
   ShoppingBasket,
@@ -77,6 +78,7 @@ export default function VentaPage() {
     queryKey: ["catalogo", busqueda, categoriaId, pagina],
     queryFn: () =>
       ventaApi.catalogo({ q: busqueda, categoriaId, page: pagina, size: TAMANO }),
+    placeholderData: keepPreviousData,
     refetchInterval: REFRESCO_RAPIDO,
   });
 
@@ -291,56 +293,78 @@ export default function VentaPage() {
               </p>
             )}
 
-            {catalogo.isPending ? (
-              <p className="py-8 text-center text-sm text-ink-soft">Cargando productos…</p>
-            ) : items.length ? (
-              <>
-                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {items.map((producto) => (
-                    <TarjetaProducto
-                      key={producto.id}
-                      producto={producto}
-                      sinStock={Number(producto.stock) <= 0}
-                      onAgregar={() => agregar(producto)}
+            {catalogo.isPending && <p role="status" className="sr-only">Cargando productos…</p>}
+            {catalogo.isPlaceholderData && (
+              <p role="status" className="sr-only">Actualizando productos…</p>
+            )}
+            <div className="min-h-[22rem]">
+              {catalogo.isPending ? (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
+                  {Array.from({ length: 6 }, (_, indice) => (
+                    <div
+                      key={indice}
+                      className="h-[210px] animate-pulse rounded-field border border-line bg-app"
                     />
                   ))}
-                </ul>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-                  <p className="text-sm text-ink-soft">
-                    {totalItems} {totalItems === 1 ? "producto" : "productos"}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label="Página anterior"
-                      disabled={pagina === 0}
-                      onClick={() => setPagina((actual) => Math.max(0, actual - 1))}
-                    >
-                      <ChevronLeft />
-                    </Button>
-                    <span className="min-w-16 text-center text-sm font-semibold text-ink">
-                      {pagina + 1} / {totalPaginas}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label="Página siguiente"
-                      disabled={pagina + 1 >= totalPaginas}
-                      onClick={() => setPagina((actual) => actual + 1)}
-                    >
-                      <ChevronRight />
-                    </Button>
-                  </div>
                 </div>
-              </>
-            ) : (
-              <p className="py-8 text-center text-sm text-ink-soft">
-                No hay productos con estos filtros.
-              </p>
-            )}
+              ) : items.length ? (
+                <>
+                  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {items.map((producto) => (
+                      <TarjetaProducto
+                        key={producto.id}
+                        producto={producto}
+                        sinStock={Number(producto.stock) <= 0}
+                        onAgregar={() => agregar(producto)}
+                      />
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-ink-soft">
+                        {totalItems} {totalItems === 1 ? "producto" : "productos"}
+                      </p>
+                      {catalogo.isPlaceholderData && (
+                        <LoaderCircle
+                          size={14}
+                          aria-hidden="true"
+                          className="animate-spin text-primary-600"
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Página anterior"
+                        disabled={pagina === 0}
+                        onClick={() => setPagina((actual) => Math.max(0, actual - 1))}
+                      >
+                        <ChevronLeft />
+                      </Button>
+                      <span className="min-w-16 text-center text-sm font-semibold text-ink">
+                        {pagina + 1} / {totalPaginas}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Página siguiente"
+                        disabled={pagina + 1 >= totalPaginas}
+                        onClick={() => setPagina((actual) => actual + 1)}
+                      >
+                        <ChevronRight />
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="py-8 text-center text-sm text-ink-soft">
+                  No hay productos con estos filtros.
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
