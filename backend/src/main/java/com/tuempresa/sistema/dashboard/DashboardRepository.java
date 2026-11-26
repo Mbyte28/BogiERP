@@ -81,8 +81,8 @@ public class DashboardRepository {
                 group by p.id, p.nombre, p.tipo_venta, p.imagen, cat.icono
                 """ + (descendente
                 ? "having coalesce(sum(i.cantidad), 0) > 0 "
-                        + "order by cantidad_total desc, nombre limit :limite"
-                : "order by cantidad_total asc, nombre limit :limite");
+                        + "order by cantidad_total desc, lower(p.nombre), p.id limit :limite"
+                : "order by cantidad_total asc, lower(p.nombre), p.id limit :limite");
 
         return entityManager.createNativeQuery(consulta)
                 .setParameter("desde", desde)

@@ -70,7 +70,7 @@ export function MermaForm({
               { valor: "", etiqueta: "Selecciona un producto" },
               ...productos.map((item) => ({
                 valor: String(item.id),
-                etiqueta: `${item.nombre} · ${cantidad(item.stock)} ${item.tipoVenta === "KILO" ? "kg" : "und"}`,
+                etiqueta: `${item.nombre} · ${cantidad(item.stock)} ${item.tipoVenta === "KILO" ? "kg" : "uni"}`,
               })),
             ]}
           />

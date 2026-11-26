@@ -31,6 +31,7 @@ public class DashboardService {
 
     private static final ZoneId ZONA = ZoneId.of("America/Lima");
     private static final DateTimeFormatter FORMATO_MES = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final int LIMITE_TOP = 5;
 
     @Inject
     DashboardRepository datos;
@@ -85,7 +86,7 @@ public class DashboardService {
             throw Errores.badRequest("El orden debe ser desc o asc");
         }
         Rango periodo = rango(desde, hasta);
-        return aProductos(datos.topProductos(periodo.inicio(), periodo.fin(), "desc".equals(filtro), 10));
+        return aProductos(datos.topProductos(periodo.inicio(), periodo.fin(), "desc".equals(filtro), LIMITE_TOP));
     }
 
     @Transactional
@@ -105,7 +106,7 @@ public class DashboardService {
                 mes.toString(),
                 construirResumen(periodo),
                 construirPorDia(periodo),
-                aProductos(datos.topProductos(periodo.inicio(), periodo.fin(), true, 5)));
+                aProductos(datos.topProductos(periodo.inicio(), periodo.fin(), true, LIMITE_TOP)));
     }
 
     private ResumenDashboardResponse construirResumen(Rango periodo) {

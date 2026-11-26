@@ -33,6 +33,7 @@ export interface ItemCatalogo {
   stock: string;
   sinCosto: boolean;
   diasVencimiento: number | null;
+  cantidadVendida: string | number;
   masVendido: boolean;
   fechaVencimiento: string | null;
 }

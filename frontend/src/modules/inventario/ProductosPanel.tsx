@@ -197,7 +197,7 @@ export function ProductosPanel() {
                       </td>
                       <td className="px-3 py-3 text-ink-soft">{producto.categoriaNombre ?? "—"}</td>
                       <td className="px-3 py-3 font-semibold text-ink">
-                        {cantidad(producto.stock)} {producto.tipoVenta === "KILO" ? "kg" : "und"}
+                        {cantidad(producto.stock)} {producto.tipoVenta === "KILO" ? "kg" : "uni"}
                       </td>
                       <td className="px-3 py-3 text-ink">{dinero(producto.precioVenta)}</td>
                       <td className="px-3 py-3 text-ink">{dinero(producto.costoActual)}</td>
@@ -245,7 +245,7 @@ export function ProductosPanel() {
                   </div>
 
                   <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-surface p-3 text-center">
-                    <Dato label="Stock" valor={`${cantidad(producto.stock)} ${producto.tipoVenta === "KILO" ? "kg" : "und"}`} />
+                    <Dato label="Stock" valor={`${cantidad(producto.stock)} ${producto.tipoVenta === "KILO" ? "kg" : "uni"}`} />
                     <Dato label="Precio" valor={dinero(producto.precioVenta)} />
                     <Dato label="Costo" valor={dinero(producto.costoActual)} />
                   </div>

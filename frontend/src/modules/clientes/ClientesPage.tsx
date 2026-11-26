@@ -115,7 +115,7 @@ function FilaEnvio({
           </Badge>
         </div>
         <p className="mt-1 text-xs text-ink-soft">
-          {cantidad(envio.cantidad)} {envio.tipoVenta === "KILO" ? "kg" : "und"} ×{" "}
+          {cantidad(envio.cantidad)} {envio.tipoVenta === "KILO" ? "kg" : "uni"} ×{" "}
           {dinero(envio.precioUnitario)} · {fechaHora(envio.creadoEn)}
         </p>
       </div>
@@ -753,7 +753,7 @@ export default function ClientesPage() {
               <h3 className="text-lg font-bold tracking-tight text-ink">Pagar envío</h3>
               <p className="mt-1 text-sm text-ink-soft">
                 {envioPagando.nombreProducto} · {cantidad(envioPagando.cantidad)}{" "}
-                {envioPagando.tipoVenta === "KILO" ? "kg" : "und"} ·{" "}
+                {envioPagando.tipoVenta === "KILO" ? "kg" : "uni"} ·{" "}
                 {dinero(envioPagando.subtotal)}
               </p>
               <p className="mt-1 text-xs text-ink-soft">

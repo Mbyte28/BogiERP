@@ -101,7 +101,13 @@ function detalle(mes: string, ventas: number): DetalleMesDashboard {
     mes,
     resumen: resumen(mes, ventas),
     porDia: [{ dia: `${mes}-25`, ventas, ganancia: ventas / 2, merma: ventas / 20 }],
-    topProductos: [producto(1, "Pan", 30), producto(2, "Leche", 20), producto(3, "Mantequilla", 10)],
+    topProductos: [
+      producto(1, "Pan", 30),
+      producto(2, "Leche", 20),
+      producto(3, "Mantequilla", 10),
+      producto(4, "Queso", 8),
+      producto(5, "Yogur", 5),
+    ],
   };
 }
 
@@ -140,8 +146,10 @@ function simularApi({ fallar = false }: { fallar?: boolean } = {}) {
       if (url.includes("/dashboard/top-productos")) {
         return respuesta([
           producto(4, "Café", 0),
-          producto(5, "Azúcar", 1),
+          producto(5, "Azúcar", 0),
           producto(2, "Leche", 2),
+          producto(1, "Pan", 3),
+          producto(3, "Mantequilla", 4),
         ]);
       }
       return respuesta(null, 404);
@@ -173,7 +181,11 @@ describe("DashboardPage", () => {
     expect(await screen.findByText(textoDinero(200))).toBeInTheDocument();
     expect(screen.getAllByText("Pan").length).toBeGreaterThan(0);
     expect(screen.getByText("Café")).toBeInTheDocument();
-    expect(screen.getByText("Top 3")).toBeInTheDocument();
+    expect(screen.getByText("Azúcar")).toBeInTheDocument();
+    expect(screen.getAllByText("Mantequilla").length).toBeGreaterThan(0);
+    expect(screen.getByText("Top 5")).toBeInTheDocument();
+    expect(screen.getAllByText(/ uni ·/).length).toBeGreaterThanOrEqual(5);
+    expect(screen.queryByText(/ und\b/)).not.toBeInTheDocument();
 
     expect(screen.getAllByTestId("grafico-area").length).toBeGreaterThan(0);
     expect(screen.getByTestId("grafico-barras")).toBeInTheDocument();

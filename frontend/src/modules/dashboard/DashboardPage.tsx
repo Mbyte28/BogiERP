@@ -154,7 +154,7 @@ function Miniatura({ producto }: { producto: ProductoDestacado }) {
 }
 
 function FilaProducto({ producto }: { producto: ProductoDestacado }) {
-  const unidad = producto.tipoVenta === "KILO" ? "kg" : "und";
+  const unidad = producto.tipoVenta === "KILO" ? "kg" : "uni";
   return (
     <li className="flex min-h-14 items-center gap-3 py-2">
       <Miniatura producto={producto} />
@@ -204,8 +204,8 @@ export default function DashboardPage() {
   });
 
   const resumenMes = detalle.data?.resumen;
-  const masVendidos = (detalle.data?.topProductos ?? []).slice(0, 3);
-  const menos = (menosVendidos.data ?? []).slice(0, 3);
+  const masVendidos = detalle.data?.topProductos ?? [];
+  const menos = menosVendidos.data ?? [];
   const porDia = detalle.data?.porDia ?? [];
   const dona = (detalle.data?.topProductos ?? []).slice(0, 5).map((producto, indice) => ({
     ...producto,
@@ -290,7 +290,7 @@ export default function DashboardPage() {
             />
             <Kpi
               etiqueta="Vendido"
-              valor={`${cantidad(resumenMes?.unidades)} und`}
+              valor={`${cantidad(resumenMes?.unidades)} uni`}
               nota={`${cantidad(resumenMes?.kilos)} kg vendidos`}
               color="#3182c4"
               serie={serie.map((punto) => punto.unidades)}

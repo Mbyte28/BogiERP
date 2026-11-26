@@ -38,6 +38,7 @@ public class VentaService {
 
     private static final ZoneId ZONA = ZoneId.of("America/Lima");
     private static final BigDecimal CERO = BigDecimal.ZERO.setScale(2);
+    private static final int LIMITE_MAS_VENDIDOS = 5;
 
     @Inject
     EntityManager entityManager;
@@ -60,20 +61,31 @@ public class VentaService {
     @Transactional
     public CatalogoPageResponse catalogo(String q, Long categoriaId, int page, int size) {
         StringBuilder sql = new StringBuilder(
-                "select p.id, p.nombre, c.nombre, c.icono, p.imagen, p.tipo_venta, p.precio_venta, "
-                        + "p.costo_actual, p.stock, p.fecha_vencimiento, count(vi.id) "
+                "select id, nombre, categoria_nombre, categoria_icono, imagen, tipo_venta, "
+                        + "precio_venta, costo_actual, stock, fecha_vencimiento, cantidad_vendida, "
+                        + "puesto_ventas <= " + LIMITE_MAS_VENDIDOS + " "
+                        + "from ( "
+                        + "select p.id, p.nombre, c.nombre as categoria_nombre, "
+                        + "c.icono as categoria_icono, p.imagen, p.tipo_venta, p.precio_venta, "
+                        + "p.costo_actual, p.stock, p.fecha_vencimiento, p.categoria_id, "
+                        + "coalesce(sum(i.cantidad), 0) as cantidad_vendida, "
+                        + "row_number() over (order by coalesce(sum(i.cantidad), 0) desc, "
+                        + "lower(p.nombre), p.id) as puesto_ventas "
                         + "from producto p "
                         + "left join categoria c on c.id = p.categoria_id "
-                        + "left join venta_item vi on vi.producto_id = p.id "
-                        + "where p.activo = true ");
+                        + "left join v_lineas_ingreso i on i.producto_id = p.id "
+                        + "where p.activo = true "
+                        + "group by p.id, p.nombre, p.categoria_id, p.imagen, p.tipo_venta, "
+                        + "p.precio_venta, p.costo_actual, p.stock, p.fecha_vencimiento, "
+                        + "c.nombre, c.icono "
+                        + ") ranking where true ");
         if (q != null && !q.isBlank()) {
-            sql.append("and lower(p.nombre) like :q ");
+            sql.append("and lower(nombre) like :q ");
         }
         if (categoriaId != null) {
-            sql.append("and p.categoria_id = :categoriaId ");
+            sql.append("and categoria_id = :categoriaId ");
         }
-        sql.append("group by p.id, c.nombre, c.icono ");
-        sql.append("order by count(vi.id) desc, lower(p.nombre), p.id");
+        sql.append("order by cantidad_vendida desc, lower(nombre), id");
 
         Query consulta = entityManager.createNativeQuery(sql.toString());
         if (q != null && !q.isBlank()) {
@@ -211,10 +223,13 @@ public class VentaService {
         Long dias = vencimiento == null
                 ? null
                 : ChronoUnit.DAYS.between(LocalDate.now(ZONA), vencimiento);
-        long vendidos = fila[10] == null ? 0 : ((Number) fila[10]).longValue();
+        BigDecimal cantidadVendida = aDecimal(fila[10]);
+        boolean masVendido = fila[11] instanceof Boolean valor
+                ? valor
+                : Boolean.parseBoolean(String.valueOf(fila[11]));
 
         return new CatalogoItemResponse(id, nombre, categoriaNombre, categoriaIcono, imagen, tipo,
-                precio, stock, costo == null, dias, vendidos > 0, vencimiento);
+                precio, stock, costo == null, dias, cantidadVendida, masVendido, vencimiento);
     }
 
     private VentaResponse aRespuesta(Venta venta, List<VentaItem> items) {

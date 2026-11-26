@@ -254,7 +254,7 @@ Todos los endpoints requieren autenticación y su módulo (`VENTA` o `CAJA`).
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `GET` | `/api/catalogo?page=&size=25&q=&categoriaId=` | Catálogo paginado, más vendidos primero |
+| `GET` | `/api/catalogo?page=&size=25&q=&categoriaId=` | Catálogo paginado por cantidad vendida (uni/kg) |
 | `POST` | `/api/ventas` | Registrar venta, descontar stock y guardar movimientos |
 | `GET` | `/api/caja/actual` | Estado de la caja (`{ abierta, caja }`) |
 | `POST` | `/api/caja/abrir` y `/api/caja/cerrar` | Abrir o cerrar la caja actual |
@@ -276,8 +276,11 @@ Reglas de pago:
 - **Ambos:** el efectivo debe ser mayor que cero y menor que el total; el resto
   se registra como transferencia con Yape o Plin, sin vuelto.
 
-El catálogo ordena primero los productos más vendidos (según `venta_item`), con
-búsqueda global y filtro por categoría paginados de 25 en 25. En la interfaz, el
+El catálogo y el dashboard comparten la misma métrica: `SUM(cantidad)` de
+`v_lineas_ingreso` por producto, en su unidad natural (`uni` o `kg`). El top de 5
+y el fondo de 5 se calculan sobre todos los productos activos, sin rankings
+separados por unidad. Los envíos pagados cuentan una sola vez por línea.
+Búsqueda global y filtro por categoría paginados de 25 en 25. En la interfaz, el
 ticket calcula total y vuelto en tiempo real; en móvil se abre como bottom sheet
 con una barra inferior fija, y el pago con transferencia pasa por el modal
 Yape/Plin antes de la confirmación de "Venta registrada". La pantalla de caja
@@ -359,8 +362,8 @@ costo registrado. Los meses y días se agrupan en `America/Lima`.
 
 La interfaz muestra KPIs con sparkline, un área de ventas y ganancia neta,
 barras redondeadas por mes con el mes activo resaltado, una dona de los productos
-más vendidos, el detalle diario del mes y tarjetas de más/menos vendidos con
-miniaturas. El selector permite cambiar entre 6 meses, 12 meses y un año
+más vendidos, el detalle diario del mes y tarjetas con los 5 más y los 5 menos
+vendidos, con miniaturas. El selector permite cambiar entre 6 meses, 12 meses y un año
 completo, y elegir cualquier mes de la serie tocando una barra o el selector.
 
 ---

@@ -43,6 +43,10 @@ import {
 
 const TAMANO = 25;
 
+function unidad(producto: ItemCatalogo): string {
+  return producto.tipoVenta === "KILO" ? "kg" : "uni";
+}
+
 export default function VentaPage() {
   const cliente = useQueryClient();
   const [busqueda, setBusqueda] = useState("");
@@ -493,7 +497,8 @@ function TarjetaProducto({
         {producto.sinCosto && <Badge variant="warning">Sin costo</Badge>}
       </div>
       <p className="mt-2 min-h-4 text-xs text-ink-soft">
-        Stock: {cantidad(producto.stock)} {producto.tipoVenta === "KILO" ? "kg" : "und"}
+        Stock: {cantidad(producto.stock)} {unidad(producto)} · Vendido:{" "}
+        {cantidad(producto.cantidadVendida)} {unidad(producto)}
       </p>
       <div className="mt-auto pt-3">
         <Button

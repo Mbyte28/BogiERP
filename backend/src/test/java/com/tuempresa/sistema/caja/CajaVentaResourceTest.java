@@ -34,15 +34,21 @@ class CajaVentaResourceTest {
     }
 
     @Test
-    void catalogoPonePrimeroLosMasVendidosYRespetaFiltros() {
+    void catalogoOrdenaPorCantidadVendidaYMarcaSoloElTopCinco() {
         String token = AuthResourceTest.iniciarSesion("admin", "admin123");
         abrirCaja(token);
         String marca = "Cat" + sufijo();
         Long categoriaId = idCategoria(token, "Bebidas");
-        long primero = crearProducto(token, marca + " A", "UNIDAD", "5.00", "3.00", "10", categoriaId);
-        long segundo = crearProducto(token, marca + " B", "KILO", "10.00", "6.00", "5.000", categoriaId);
+        long[] productos = new long[6];
+        String[] cantidades = {"60", "50.000", "40", "30.000", "20", "10.000"};
+        String[] types = {"UNIDAD", "KILO", "UNIDAD", "KILO", "UNIDAD", "KILO"};
+        String[] stocks = {"100", "100.000", "100", "100.000", "100", "100.000"};
 
-        registrarVenta(token, segundo, "1.000", "\"EFECTIVO\"", null, null, "15.00");
+        for (int i = 0; i < productos.length; i++) {
+            String nombre = marca + " " + (char) ('A' + i);
+            productos[i] = crearProducto(token, nombre, types[i], "1.00", null, stocks[i], categoriaId);
+            registrarVenta(token, productos[i], cantidades[i], "\"EFECTIVO\"", null, null, "1000.00");
+        }
 
         JsonPath pagina = given()
                 .cookie(COOKIE, token)
@@ -50,12 +56,17 @@ class CajaVentaResourceTest {
                 .get("/catalogo")
                 .then()
                 .statusCode(200)
-                .body("total", equalTo(2))
-                .body("items[0].masVendido", equalTo(true))
+                .body("total", equalTo(6))
+                .body("items.size()", equalTo(6))
                 .extract()
                 .jsonPath();
-        assertEquals(segundo, pagina.getLong("items[0].id"));
-        assertEquals(primero, pagina.getLong("items[1].id"));
+
+        for (int i = 0; i < productos.length; i++) {
+            assertEquals(productos[i], pagina.getLong("items[" + i + "].id"));
+            assertEquals(i < 5, pagina.getBoolean("items[" + i + "].masVendido"));
+        }
+        assertEquals(60f, pagina.getFloat("items[0].cantidadVendida"), 0.001f);
+        assertEquals(10f, pagina.getFloat("items[5].cantidadVendida"), 0.001f);
         assertEquals("Bebidas", pagina.getString("items[0].categoriaNombre"));
 
         given()

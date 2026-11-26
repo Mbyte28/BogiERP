@@ -222,6 +222,42 @@ class DashboardResourceTest {
     }
 
     @Test
+    void rankingTopCincoYMenosVendidosIncluyeProductosSinVentas() {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        LocalDate hoy = LocalDate.now(ZONA);
+        String marca = "Rank" + sufijo();
+        for (int i = 0; i < 6; i++) {
+            long producto = crearProducto(token, marca + i, "3.00", "1.00", "20");
+            crearCajaConVenta(token, producto, "2");
+        }
+
+        given()
+                .cookie(COOKIE, token)
+                .queryParam("desde", hoy.minusDays(1).toString())
+                .queryParam("hasta", hoy.plusDays(1).toString())
+                .queryParam("orden", "desc")
+                .get("/dashboard/top-productos")
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(5));
+
+        JsonPath sinVentas = given()
+                .cookie(COOKIE, token)
+                .queryParam("desde", hoy.plusDays(10).toString())
+                .queryParam("hasta", hoy.plusDays(20).toString())
+                .queryParam("orden", "asc")
+                .get("/dashboard/top-productos")
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(5))
+                .extract()
+                .jsonPath();
+        List<Float> cantidades = sinVentas.getList("cantidad", Float.class);
+        assertTrue(cantidades.stream().allMatch(cantidad -> cantidad == 0f),
+                "Los menos vendidos deben incluir productos con 0: " + cantidades);
+    }
+
+    @Test
     void permisosPorModuloSeValidanEnCadaEndpoint() {
         String tokenAdmin = AuthResourceTest.iniciarSesion("admin", "admin123");
         String marca = sufijo();

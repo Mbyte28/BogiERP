@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { TicketProvider } from "@/contexts/TicketContext";
 import type { CajaActual } from "@/lib/caja";
+import { cantidad } from "@/lib/inventario";
 import type { PaginaCatalogo, VentaResponse } from "@/lib/venta";
 import VentaPage from "./VentaPage";
 
@@ -41,6 +42,7 @@ const catalogo: PaginaCatalogo = {
       stock: "10",
       sinCosto: true,
       diasVencimiento: 3,
+      cantidadVendida: 12,
       masVendido: false,
       fechaVencimiento: "2026-11-28",
     },
@@ -55,6 +57,7 @@ const catalogo: PaginaCatalogo = {
       stock: "4.500",
       sinCosto: false,
       diasVencimiento: null,
+      cantidadVendida: "4.5",
       masVendido: true,
       fechaVencimiento: null,
     },
@@ -224,6 +227,9 @@ describe("VentaPage", () => {
     expect(screen.getAllByText("Más vendido").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Sin costo").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Agregar Leche entera" })).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Vendido: ${cantidad(12)} uni`))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Vendido: ${cantidad(4.5)} kg`))).toBeInTheDocument();
+    expect(screen.queryByText(/ und\b/)).not.toBeInTheDocument();
   });
 
   it("calcula el vuelto en tiempo real y registra una venta en efectivo", async () => {

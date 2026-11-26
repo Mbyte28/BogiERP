@@ -15,6 +15,7 @@ public record CatalogoItemResponse(
         BigDecimal stock,
         boolean sinCosto,
         Long diasVencimiento,
+        BigDecimal cantidadVendida,
         boolean masVendido,
         LocalDate fechaVencimiento) {
 }

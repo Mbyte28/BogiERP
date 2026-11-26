@@ -125,7 +125,7 @@ export default function HistorialPage() {
                         <p className="text-sm font-bold text-ink">{dinero(caja.totalDinero)}</p>
                         <p className="mt-0.5 text-xs text-ink-soft">
                           {caja.totalVentas} {caja.totalVentas === 1 ? "venta" : "ventas"} ·{" "}
-                          {cantidad(caja.totalUnidades)} und / {cantidad(caja.totalKilos)} kg
+                          {cantidad(caja.totalUnidades)} uni / {cantidad(caja.totalKilos)} kg
                         </p>
                       </div>
                     </button>
