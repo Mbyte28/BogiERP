@@ -103,6 +103,31 @@ export function cantidad(valor: string | number | null | undefined): string {
   return new Intl.NumberFormat("es-PE", { maximumFractionDigits: 3 }).format(numero);
 }
 
+/** Convierte el costo total de un lote de kilos al costo por kilo que guarda el backend. */
+export function costoPorKilo(costoTotal: number, kilos: number): number {
+  if (!Number.isFinite(costoTotal) || costoTotal < 0) {
+    throw new Error("El costo registrado no es válido");
+  }
+  if (!Number.isFinite(kilos) || kilos <= 0) {
+    throw new Error("Ingresa stock en kilos antes de registrar el costo total");
+  }
+  return Math.round((costoTotal / kilos + Number.EPSILON) * 100) / 100;
+}
+
+/** Muestra en el formulario el costo total cuando el producto se vende por kilo. */
+export function costoTotal(producto: Pick<Producto, "costoActual" | "stock" | "tipoVenta">): string {
+  if (producto.costoActual === null || producto.costoActual === undefined || producto.costoActual === "") {
+    return "";
+  }
+  const unitario = Number(producto.costoActual);
+  const stock = Number(producto.stock);
+  if (!Number.isFinite(unitario) || (producto.tipoVenta === "KILO" && !Number.isFinite(stock))) {
+    return "";
+  }
+  const total = producto.tipoVenta === "KILO" ? unitario * stock : unitario;
+  return (Math.round((total + Number.EPSILON) * 100) / 100).toFixed(2);
+}
+
 export function fecha(valor: string | null): string {
   if (!valor) return "Sin fecha";
   const fecha = new Date(valor.length === 10 ? `${valor}T00:00:00` : valor);

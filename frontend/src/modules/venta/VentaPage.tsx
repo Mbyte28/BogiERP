@@ -221,7 +221,9 @@ export default function VentaPage() {
           <CardHeader>
             <CardTitle>Catálogo</CardTitle>
             <p className="text-sm text-ink-soft">
-              Los más vendidos aparecen primero. Toca un producto para agregarlo.
+              {busqueda.trim()
+                ? "Buscando en todas las categorías."
+                : "Los más vendidos aparecen primero. Toca un producto para agregarlo."}
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -237,6 +239,7 @@ export default function VentaPage() {
                 value={busqueda}
                 onChange={(evento) => {
                   setBusqueda(evento.target.value);
+                  if (evento.target.value.trim()) setCategoriaId(null);
                   setPagina(0);
                 }}
                 placeholder="Buscar por nombre…"
@@ -262,6 +265,7 @@ export default function VentaPage() {
                   nombre={categoria.nombre}
                   onClick={() => {
                     setCategoriaId(categoria.id);
+                    setBusqueda("");
                     setPagina(0);
                   }}
                 />
@@ -460,7 +464,7 @@ function TarjetaProducto({
 }) {
   const fuente = urlImagen(producto.imagen);
   return (
-    <li className="flex min-w-0 flex-col rounded-field border border-line bg-app p-3">
+    <li className="flex h-full min-h-[210px] min-w-0 flex-col rounded-field border border-line bg-app p-3">
       <div className="flex items-start gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface text-primary-600">
           {fuente ? (
@@ -479,27 +483,29 @@ function TarjetaProducto({
           </p>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-1">
+      <div className="mt-3 flex min-h-12 flex-wrap content-start items-start gap-1">
         <Badge variant="info">
           {producto.tipoVenta === "KILO" ? "Kilo" : "Unidad"}
         </Badge>
         {producto.masVendido && <Badge variant="default">Más vendido</Badge>}
         {producto.sinCosto && <Badge variant="warning">Sin costo</Badge>}
       </div>
-      <p className="mt-2 text-xs text-ink-soft">
+      <p className="mt-2 min-h-4 text-xs text-ink-soft">
         Stock: {cantidad(producto.stock)} {producto.tipoVenta === "KILO" ? "kg" : "und"}
       </p>
-      <Button
-        type="button"
-        size="sm"
-        className="mt-3 w-full"
-        disabled={sinStock}
-        aria-label={`Agregar ${producto.nombre}`}
-        onClick={onAgregar}
-      >
-        <Plus />
-        {sinStock ? "Sin stock" : "Agregar"}
-      </Button>
+      <div className="mt-auto pt-3">
+        <Button
+          type="button"
+          size="sm"
+          className="w-full"
+          disabled={sinStock}
+          aria-label={`Agregar ${producto.nombre}`}
+          onClick={onAgregar}
+        >
+          <Plus />
+          {sinStock ? "Sin stock" : "Agregar"}
+        </Button>
+      </div>
     </li>
   );
 }
@@ -567,7 +573,8 @@ function Ticket({
                     {linea.producto.nombre}
                   </p>
                   <p className="text-xs text-ink-soft">
-                    {dinero(linea.producto.precioVenta)} c/u
+                    {dinero(linea.producto.precioVenta)}{" "}
+                    {linea.producto.tipoVenta === "KILO" ? "x kilo" : "c/u"}
                   </p>
                 </div>
                 <input

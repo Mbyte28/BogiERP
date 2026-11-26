@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { CajaActual } from "@/lib/caja";
@@ -222,5 +222,35 @@ describe("VentaPage", () => {
     await screen.findAllByText("Leche entera");
     fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
     expect(screen.getByRole("button", { name: "Finalizar venta" })).toBeDisabled();
+  });
+
+  it("muestra el precio por kilo en el ticket de un producto de kilo", async () => {
+    simularApi();
+    renderizar();
+
+    await screen.findAllByText("Pollo fresco");
+    fireEvent.click(screen.getByRole("button", { name: "Agregar Pollo fresco" }));
+
+    expect(screen.getByText(/12\.00 x kilo/)).toBeInTheDocument();
+  });
+
+  it("busca en todas las categorías al escribir en el buscador", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Lácteos" }));
+    fireEvent.change(screen.getByLabelText("Buscar productos"), {
+      target: { value: "pollo" },
+    });
+
+    await waitFor(() => {
+      const url = [...peticiones.mock.calls]
+        .reverse()
+        .find(([valor]) => valor.includes("/catalogo"))?.[0];
+      expect(url).toContain("q=pollo");
+      expect(url).not.toContain("categoriaId");
+    });
+    expect(screen.getByText(/Buscando en todas las categorías/)).toBeInTheDocument();
   });
 });

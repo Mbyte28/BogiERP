@@ -3,9 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { inventarioApi, type Categoria } from "@/lib/inventario";
 import { Campo, ESTILO_CAMPO } from "./ProductoForm";
-import { IconoCategoria } from "./IconoCategoria";
+import { ICONOS_CATEGORIA, IconoCategoria } from "./IconoCategoria";
 
 export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
   const cliente = useQueryClient();
@@ -18,10 +19,10 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
   const guardar = useMutation({
     mutationFn: () =>
       editando === null
-        ? inventarioApi.crearCategoria({ nombre: nombre.trim(), icono: icono.trim() || "package" })
+        ? inventarioApi.crearCategoria({ nombre: nombre.trim(), icono })
         : inventarioApi.actualizarCategoria(editando, {
             nombre: nombre.trim(),
-            icono: icono.trim() || "package",
+            icono,
           }),
     onSuccess: async () => {
       await cliente.invalidateQueries({ queryKey: ["categorias"] });
@@ -73,7 +74,13 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
         <span className="hidden sm:inline">Categorías</span>
       </Button>
 
-      <Sheet open={abierto} onOpenChange={(estado) => !estado && limpiar()}>
+      <Sheet
+        open={abierto}
+        onOpenChange={(estado) => {
+          setAbierto(estado);
+          if (!estado) limpiar();
+        }}
+      >
         <SheetContent
           side="bottom"
           title="Gestionar categorías"
@@ -99,16 +106,35 @@ export function CategoriasPanel({ categorias }: { categorias: Categoria[] }) {
                   placeholder="Ej. Bebidas"
                 />
               </Campo>
-              <Campo id="categoria-icono" label="Icono">
-                <input
-                  id="categoria-icono"
-                  maxLength={60}
-                  value={icono}
-                  onChange={(evento) => setIcono(evento.target.value)}
-                  className={ESTILO_CAMPO}
-                  placeholder="cup-soda"
-                />
-              </Campo>
+              <div className="min-w-0 sm:col-span-2">
+                <p className="text-xs font-semibold text-ink">Icono</p>
+                <div className="mt-2 grid max-h-44 grid-cols-5 gap-2 overflow-y-auto rounded-field border border-line bg-app p-2 sm:grid-cols-8">
+                  {ICONOS_CATEGORIA.map(({ clave, etiqueta, Icono }) => {
+                    const activo = icono === clave;
+                    return (
+                      <button
+                        key={clave}
+                        type="button"
+                        aria-label={`Icono ${etiqueta}`}
+                        aria-pressed={activo}
+                        title={etiqueta}
+                        onClick={() => setIcono(clave)}
+                        className={cn(
+                          "flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 transition-colors",
+                          activo
+                            ? "border-primary-500 bg-primary-50 text-primary-600"
+                            : "border-transparent bg-surface text-ink-soft hover:bg-white hover:text-ink",
+                        )}
+                      >
+                        <Icono size={18} strokeWidth={1.8} aria-hidden="true" />
+                        <span className="w-full truncate text-center text-[10px] font-medium">
+                          {etiqueta}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" className="flex-1" disabled={guardar.isPending}>
                   {guardar.isPending

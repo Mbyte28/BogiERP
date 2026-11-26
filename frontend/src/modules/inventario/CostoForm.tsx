@@ -1,7 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { inventarioApi, type Producto } from "@/lib/inventario";
+import {
+  cantidad,
+  costoPorKilo,
+  costoTotal,
+  inventarioApi,
+  type Producto,
+} from "@/lib/inventario";
 import { Campo, ESTILO_CAMPO } from "./ProductoForm";
 
 export function CostoForm({
@@ -14,7 +20,7 @@ export function CostoForm({
   onCancelar: () => void;
 }) {
   const cliente = useQueryClient();
-  const [costo, setCosto] = useState(producto.costoActual ?? "");
+  const [costo, setCosto] = useState(costoTotal(producto));
   const [mensaje, setMensaje] = useState<string | null>(null);
 
   const guardar = useMutation({
@@ -29,7 +35,20 @@ export function CostoForm({
   async function alEnviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setMensaje(null);
-    await guardar.mutateAsync(costo === "" ? null : Number(costo));
+    if (costo === "") {
+      await guardar.mutateAsync(null);
+      return;
+    }
+
+    const valor = Number(costo);
+    try {
+      const guardado = producto.tipoVenta === "KILO"
+        ? costoPorKilo(valor, Number(producto.stock))
+        : valor;
+      await guardar.mutateAsync(guardado);
+    } catch (error) {
+      setMensaje(error instanceof Error ? error.message : "No se pudo registrar el costo");
+    }
   }
 
   return (
@@ -41,7 +60,14 @@ export function CostoForm({
         </p>
       </div>
 
-      <Campo id="costo-producto" label="Costo actual (dejar vacío si no tiene)">
+      <Campo
+        id="costo-producto"
+        label={
+          producto.tipoVenta === "KILO"
+            ? "Costo total del stock (dejar vacío si no tiene)"
+            : "Costo actual (dejar vacío si no tiene)"
+        }
+      >
         <input
           id="costo-producto"
           type="number"
@@ -53,6 +79,12 @@ export function CostoForm({
           className={ESTILO_CAMPO}
           placeholder="Sin costo"
         />
+        {producto.tipoVenta === "KILO" && (
+          <p className="mt-1 text-xs text-ink-soft">
+            El total se divide entre {cantidad(producto.stock)} kg de stock para obtener el costo
+            por kilo.
+          </p>
+        )}
       </Campo>
 
       {mensaje && (

@@ -1,7 +1,10 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import {
+  costoPorKilo,
+  costoTotal,
   inventarioApi,
   type Categoria,
   type DatosProducto,
@@ -29,7 +32,7 @@ export function ProductoForm({
   );
   const [tipoVenta, setTipoVenta] = useState<TipoVenta>(producto?.tipoVenta ?? "UNIDAD");
   const [precioVenta, setPrecioVenta] = useState(producto?.precioVenta ?? "");
-  const [costoActual, setCostoActual] = useState(producto?.costoActual ?? "");
+  const [costoActual, setCostoActual] = useState(producto ? costoTotal(producto) : "");
   const [stock, setStock] = useState(producto?.stock ?? "0");
   const [fechaVencimiento, setFechaVencimiento] = useState(producto?.fechaVencimiento ?? "");
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -52,13 +55,26 @@ export function ProductoForm({
   async function alEnviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setMensaje(null);
+
+    const costo = costoActual === "" ? null : Number(costoActual);
+    const stockNumerico = stock === "" ? 0 : Number(stock);
+    let costoGuardado: number | null = null;
+    if (costo !== null) {
+      try {
+        costoGuardado = tipoVenta === "KILO" ? costoPorKilo(costo, stockNumerico) : costo;
+      } catch (error) {
+        setMensaje(error instanceof Error ? error.message : "No se pudo registrar el costo");
+        return;
+      }
+    }
+
     await guardar.mutateAsync({
       nombre: nombre.trim(),
       categoriaId: categoriaId ? Number(categoriaId) : null,
       tipoVenta,
       precioVenta: Number(precioVenta),
-      costoActual: costoActual === "" ? null : Number(costoActual),
-      stock: stock === "" ? 0 : Number(stock),
+      costoActual: costoGuardado,
+      stock: stockNumerico,
       fechaVencimiento: fechaVencimiento || null,
     });
   }
@@ -89,31 +105,31 @@ export function ProductoForm({
         </Campo>
 
         <Campo id="producto-categoria" label="Categoría">
-          <select
+          <Select
             id="producto-categoria"
             value={categoriaId}
-            onChange={(evento) => setCategoriaId(evento.target.value)}
-            className={ESTILO_CAMPO}
-          >
-            <option value="">Sin categoría</option>
-            {categorias.map((categoria) => (
-              <option key={categoria.id} value={categoria.id}>
-                {categoria.nombre}
-              </option>
-            ))}
-          </select>
+            onChange={setCategoriaId}
+            placeholder="Selecciona una categoría"
+            opciones={[
+              { valor: "", etiqueta: "Sin categoría" },
+              ...categorias.map((categoria) => ({
+                valor: String(categoria.id),
+                etiqueta: categoria.nombre,
+              })),
+            ]}
+          />
         </Campo>
 
         <Campo id="producto-tipo" label="Tipo de venta">
-          <select
+          <Select
             id="producto-tipo"
             value={tipoVenta}
-            onChange={(evento) => setTipoVenta(evento.target.value as TipoVenta)}
-            className={ESTILO_CAMPO}
-          >
-            <option value="UNIDAD">Unidad</option>
-            <option value="KILO">Kilo</option>
-          </select>
+            onChange={(valor) => setTipoVenta(valor as TipoVenta)}
+            opciones={[
+              { valor: "UNIDAD", etiqueta: "Unidad" },
+              { valor: "KILO", etiqueta: "Kilo" },
+            ]}
+          />
         </Campo>
 
         <Campo id="producto-precio" label="Precio de venta">
@@ -131,7 +147,10 @@ export function ProductoForm({
           />
         </Campo>
 
-        <Campo id="producto-costo" label="Costo actual (opcional)">
+        <Campo
+          id="producto-costo"
+          label={tipoVenta === "KILO" ? "Costo total del stock (opcional)" : "Costo actual (opcional)"}
+        >
           <input
             id="producto-costo"
             type="number"
@@ -143,6 +162,12 @@ export function ProductoForm({
             className={ESTILO_CAMPO}
             placeholder="Sin costo"
           />
+          {tipoVenta === "KILO" && (
+            <p className="mt-1 text-xs text-ink-soft">
+              Se divide entre los kilos de stock. Ejemplo: 10 kg que costaron S/ 10.00 → S/ 1.00
+              por kilo.
+            </p>
+          )}
         </Campo>
 
         <Campo id="producto-stock" label={tipoVenta === "KILO" ? "Stock (kilos)" : "Stock (unidades)"}>

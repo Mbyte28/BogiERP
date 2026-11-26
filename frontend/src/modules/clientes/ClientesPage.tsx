@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
   clientesApi,
@@ -560,20 +561,20 @@ export default function ClientesPage() {
                     <label htmlFor="fiado-producto" className="text-xs font-semibold text-ink">
                       Producto
                     </label>
-                    <select
+                    <Select
                       id="fiado-producto"
                       value={productoId}
-                      onChange={(evento) => setProductoId(evento.target.value)}
-                      className={cn(ESTILO_CAMPO, "mt-2")}
-                    >
-                      <option value="">Selecciona un producto</option>
-                      {(productos.data ?? []).map((producto) => (
-                        <option key={producto.id} value={producto.id}>
-                          {producto.nombre} · {dinero(producto.precioVenta)} ·{" "}
-                          {cantidad(producto.stock)} {producto.tipoVenta === "KILO" ? "kg" : "und"}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setProductoId}
+                      className="mt-2"
+                      placeholder="Selecciona un producto"
+                      opciones={[
+                        { valor: "", etiqueta: "Selecciona un producto" },
+                        ...(productos.data ?? []).map((producto) => ({
+                          valor: String(producto.id),
+                          etiqueta: `${producto.nombre} · ${dinero(producto.precioVenta)} · ${cantidad(producto.stock)} ${producto.tipoVenta === "KILO" ? "kg" : "und"}`,
+                        })),
+                      ]}
+                    />
                   </div>
                   <div>
                     <label htmlFor="fiado-cantidad" className="text-xs font-semibold text-ink">

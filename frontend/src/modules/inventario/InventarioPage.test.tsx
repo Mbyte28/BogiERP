@@ -236,4 +236,60 @@ describe("InventarioPage", () => {
       expect(JSON.parse(String(llamada?.[1]?.body)).nombre).toBe("Panadería");
     });
   });
+
+  it("muestra todos los iconos y cierra el panel de categorías con la X", async () => {
+    simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Gestionar categorías" }));
+
+    const dialogo = await screen.findByRole("dialog", { name: "Gestionar categorías" });
+    expect(within(dialogo).getByRole("button", { name: "Icono Carne" })).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: "Icono Gaseosa" })).toBeInTheDocument();
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Gestionar categorías" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("convierte el costo total de un producto de kilo a costo por kilo", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Nuevo producto" }));
+
+    const dialogo = await screen.findByRole("dialog", { name: "Producto" });
+    fireEvent.change(within(dialogo).getByLabelText("Nombre"), {
+      target: { value: "Carne de prueba" },
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Tipo de venta"), {
+      target: { value: "KILO" },
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Precio de venta"), {
+      target: { value: "20" },
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Stock (kilos)"), {
+      target: { value: "10" },
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Costo total del stock (opcional)"), {
+      target: { value: "10" },
+    });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Crear producto" }));
+
+    await waitFor(() => {
+      const llamada = peticiones.mock.calls.find(
+        ([url, init]) => url.includes("/productos") && init?.method === "POST",
+      );
+      expect(llamada).toBeDefined();
+      const cuerpo = JSON.parse(String(llamada?.[1]?.body));
+      expect(cuerpo.tipoVenta).toBe("KILO");
+      expect(cuerpo.stock).toBe(10);
+      expect(cuerpo.costoActual).toBe(1);
+    });
+  });
 });

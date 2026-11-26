@@ -4,6 +4,7 @@ import { UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { sesionApi, type CrearUsuario } from "@/lib/auth";
 
 export function UsuariosPanel() {
@@ -96,20 +97,20 @@ export function UsuariosPanel() {
               />
             </Campo>
             <Campo id="nuevo-rol" label="Rol">
-              <select
+              <Select
                 id="nuevo-rol"
                 required
                 value={rolId}
-                onChange={(evento) => setRolId(evento.target.value)}
-                className={ESTILO_CAMPO}
-              >
-                <option value="">Selecciona un rol</option>
-                {roles.data?.map((rol) => (
-                  <option key={rol.id} value={rol.id}>
-                    {rol.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={setRolId}
+                placeholder="Selecciona un rol"
+                opciones={[
+                  { valor: "", etiqueta: "Selecciona un rol" },
+                  ...(roles.data ?? []).map((rol) => ({
+                    valor: String(rol.id),
+                    etiqueta: rol.nombre,
+                  })),
+                ]}
+              />
             </Campo>
             <div className="flex items-end">
               <Button type="submit" className="w-full" disabled={crear.isPending}>

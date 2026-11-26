@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { cantidad, inventarioApi, type Producto } from "@/lib/inventario";
 import { Campo, ESTILO_CAMPO } from "./ProductoForm";
 
@@ -59,20 +60,20 @@ export function MermaForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo id="merma-producto" label="Producto" className="sm:col-span-2">
-          <select
+          <Select
             id="merma-producto"
             required
             value={productoId}
-            onChange={(evento) => setProductoId(evento.target.value)}
-            className={ESTILO_CAMPO}
-          >
-            <option value="">Selecciona un producto</option>
-            {productos.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre} · {cantidad(item.stock)} {item.tipoVenta === "KILO" ? "kg" : "und"}
-              </option>
-            ))}
-          </select>
+            onChange={setProductoId}
+            placeholder="Selecciona un producto"
+            opciones={[
+              { valor: "", etiqueta: "Selecciona un producto" },
+              ...productos.map((item) => ({
+                valor: String(item.id),
+                etiqueta: `${item.nombre} · ${cantidad(item.stock)} ${item.tipoVenta === "KILO" ? "kg" : "und"}`,
+              })),
+            ]}
+          />
         </Campo>
 
         <Campo

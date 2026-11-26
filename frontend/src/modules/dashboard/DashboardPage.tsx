@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import {
   dashboardApi,
   finDeMes,
@@ -29,9 +30,6 @@ import {
 import { cantidad, dinero, urlImagen } from "@/lib/inventario";
 import { cn } from "@/lib/utils";
 import { IconoCategoria } from "@/modules/inventario/IconoCategoria";
-
-const ESTILO_SELECT =
-  "h-11 min-w-44 rounded-field border border-line bg-surface px-3 text-sm font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:opacity-60";
 
 const COLORES = ["#ac59db", "#6ecaba", "#e9b974", "#f08b7f", "#3182c4"];
 const MESES = [
@@ -242,32 +240,32 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <select
-            aria-label="Periodo"
+          <Select
+            ariaLabel="Periodo"
+            className="w-full sm:w-44"
             value={opcion}
-            onChange={(evento) => {
-              setOpcion(evento.target.value);
+            onChange={(valor) => {
+              setOpcion(valor);
               setMesSeleccionado(null);
             }}
-            className={ESTILO_SELECT}
-          >
-            <option value="meses:6">Últimos 6 meses</option>
-            <option value="meses:12">Últimos 12 meses</option>
-            <option value={`anio:${ANIO_ACTUAL}`}>Año {ANIO_ACTUAL}</option>
-          </select>
-          <select
-            aria-label="Mes"
+            opciones={[
+              { valor: "meses:6", etiqueta: "Últimos 6 meses" },
+              { valor: "meses:12", etiqueta: "Últimos 12 meses" },
+              { valor: `anio:${ANIO_ACTUAL}`, etiqueta: `Año ${ANIO_ACTUAL}` },
+            ]}
+          />
+          <Select
+            ariaLabel="Mes"
+            className="w-full sm:w-44"
             value={mesActivo ?? ""}
             disabled={!serie.length}
-            onChange={(evento) => setMesSeleccionado(evento.target.value)}
-            className={ESTILO_SELECT}
-          >
-            {serie.map((punto) => (
-              <option key={punto.mes} value={punto.mes}>
-                {etiquetaMesCompleta(punto.mes)}
-              </option>
-            ))}
-          </select>
+            onChange={setMesSeleccionado}
+            placeholder="Selecciona un mes"
+            opciones={serie.map((punto) => ({
+              valor: punto.mes,
+              etiqueta: etiquetaMesCompleta(punto.mes),
+            }))}
+          />
           <Button type="button" variant="outline" className="h-11" onClick={actualizar}>
             Actualizar
           </Button>
