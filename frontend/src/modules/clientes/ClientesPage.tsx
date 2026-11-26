@@ -60,7 +60,7 @@ function Cuadro({ datos }: { datos: CuadroDatos }) {
       aria-label={datos.etiqueta}
       onClick={datos.alSeleccionar}
       className={cn(
-        "flex aspect-square min-h-28 w-full max-w-60 flex-col items-center justify-center gap-1 rounded-card border px-2 py-3 text-center shadow-card outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary-500/40",
+        "flex aspect-square min-h-28 w-60 max-w-full flex-col items-center justify-center gap-1 rounded-card border px-2 py-3 text-center shadow-card outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary-500/40",
         datos.conDeuda ? "border-danger bg-danger/10" : "border-success/70 bg-success/10",
       )}
     >
@@ -554,16 +554,16 @@ export default function ClientesPage() {
           )}
           <div className="flex min-h-[24rem] items-center justify-center rounded-field border border-line/60 bg-app/40 p-4">
             {nivelActual.isPending ? (
-              <div className="grid w-fit max-w-full grid-cols-[minmax(0,15rem)] gap-5 sm:grid-cols-[repeat(2,minmax(0,15rem))] lg:grid-cols-[repeat(3,minmax(0,15rem))]">
+              <div className="flex w-full max-w-[47.5rem] flex-wrap justify-center gap-5">
                 {[0, 1, 2].map((indice) => (
                   <div
                     key={indice}
-                    className="aspect-square min-h-28 w-full max-w-60 rounded-card border border-line bg-surface/70"
+                    className="aspect-square min-h-28 w-60 max-w-full rounded-card border border-line bg-surface/70"
                   />
                 ))}
               </div>
             ) : items.length ? (
-              <div className="grid w-fit max-w-full grid-cols-[minmax(0,15rem)] gap-5 justify-items-center sm:grid-cols-[repeat(2,minmax(0,15rem))] lg:grid-cols-[repeat(3,minmax(0,15rem))]">
+              <div className="flex w-full max-w-[47.5rem] flex-wrap justify-center gap-5">
                 {items.map((datos) => (
                   <Cuadro key={datos.clave} datos={datos} />
                 ))}

@@ -241,7 +241,7 @@ describe("ClientesPage", () => {
     ).toBe(true);
 
     const grillaTorres = screen.getByRole("button", { name: "Ver torre 1" }).parentElement;
-    expect(grillaTorres).toHaveClass("w-fit");
+    expect(grillaTorres).toHaveClass("flex-wrap", "justify-center");
     expect(grillaTorres?.parentElement).toHaveClass("justify-center");
 
     fireEvent.click(screen.getByRole("button", { name: "Ver torre 1" }));
