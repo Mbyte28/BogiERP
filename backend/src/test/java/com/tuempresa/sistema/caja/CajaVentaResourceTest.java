@@ -403,7 +403,21 @@ class CajaVentaResourceTest {
                 .cookie(COOKIE, tokenVenta)
                 .get("/caja/actual")
                 .then()
+                .statusCode(200);
+
+        given()
+                .cookie(COOKIE, tokenVenta)
+                .get("/caja/1/ventas")
+                .then()
                 .statusCode(403);
+
+        String soloClientes = "clientes_" + marca;
+        crearUsuarioConModulo(tokenAdmin, soloClientes, "CLIENTES");
+        given()
+                .cookie(COOKIE, AuthResourceTest.iniciarSesion(soloClientes, "clave123"))
+                .get("/caja/actual")
+                .then()
+                .statusCode(200);
 
         registrarVenta(tokenVenta, producto, "1", "\"EFECTIVO\"", null, null, "5.00");
     }

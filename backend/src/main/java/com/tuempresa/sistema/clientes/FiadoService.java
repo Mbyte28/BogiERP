@@ -5,13 +5,19 @@ import com.tuempresa.sistema.clientes.dto.DeudaDepartamentoResponse;
 import com.tuempresa.sistema.clientes.dto.DeudaGrupoResponse;
 import com.tuempresa.sistema.clientes.dto.FiadoResponse;
 import com.tuempresa.sistema.clientes.dto.ItemFiadoRequest;
+import com.tuempresa.sistema.clientes.dto.PagarFiadoRequest;
 import com.tuempresa.sistema.clientes.dto.ProductoFiadoResponse;
+import com.tuempresa.sistema.caja.Caja;
+import com.tuempresa.sistema.caja.CajaRepository;
 import com.tuempresa.sistema.common.error.Errores;
 import com.tuempresa.sistema.common.security.UsuarioActual;
 import com.tuempresa.sistema.inventario.MovimientoStock;
 import com.tuempresa.sistema.inventario.Producto;
 import com.tuempresa.sistema.inventario.ProductoRepository;
 import com.tuempresa.sistema.inventario.TipoVenta;
+import com.tuempresa.sistema.venta.PagoService;
+import com.tuempresa.sistema.venta.Venta;
+import com.tuempresa.sistema.venta.VentaItem;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -45,6 +51,12 @@ public class FiadoService {
 
     @Inject
     EdificioService edificio;
+
+    @Inject
+    CajaRepository cajas;
+
+    @Inject
+    PagoService pagos;
 
     @Inject
     UsuarioActual usuarioActual;
@@ -127,7 +139,7 @@ public class FiadoService {
     }
 
     @Transactional
-    public FiadoResponse pagar(Long id) {
+    public FiadoResponse pagar(Long id, PagarFiadoRequest solicitud) {
         Fiado fiado = fiados.findById(id);
         if (fiado == null) {
             throw Errores.notFound("Envío no encontrado");
@@ -135,8 +147,44 @@ public class FiadoService {
         if ("PAGADO".equals(fiado.estado)) {
             throw Errores.conflict("El envío ya está pagado");
         }
+
+        Caja caja = cajas.findAbierta();
+        if (caja == null) {
+            throw Errores.badRequest("Abre la caja antes de registrar una venta");
+        }
+
+        // El envío ya descontó stock al crearse: aquí solo se cierra con una venta.
+        BigDecimal total = fiado.subtotal.setScale(2, RoundingMode.HALF_UP);
+        PagoService.Pago pago = pagos.calcular(solicitud.metodoPago(), solicitud.efectivoRecibido(),
+                solicitud.montoEfectivo(), solicitud.medioTransferencia(), total);
+
+        Venta venta = new Venta();
+        venta.cajaId = caja.id;
+        venta.usuarioId = usuarioActual.id();
+        venta.metodoPago = solicitud.metodoPago();
+        venta.total = total;
+        venta.montoEfectivo = pago.efectivo();
+        venta.montoTransferencia = pago.transferencia();
+        venta.efectivoRecibido = pago.recibido();
+        venta.vuelto = pago.vuelto();
+        venta.medioTransferencia = pago.medio();
+        venta.fiadoId = fiado.id;
+        venta.creadoEn = Instant.now();
+        entityManager.persist(venta);
+
+        VentaItem item = new VentaItem();
+        item.ventaId = venta.id;
+        item.productoId = fiado.productoId;
+        item.nombreProducto = fiado.nombreProducto;
+        item.tipoVenta = fiado.tipoVenta;
+        item.cantidad = fiado.cantidad;
+        item.precioUnitario = fiado.precioUnitario;
+        item.costoUnitario = fiado.costoUnitario;
+        item.subtotal = fiado.subtotal;
+        entityManager.persist(item);
+
         fiado.estado = "PAGADO";
-        fiado.pagadoEn = Instant.now();
+        fiado.pagadoEn = venta.creadoEn;
         fiado.pagadoPor = usuarioActual.id();
         return aRespuesta(fiado);
     }

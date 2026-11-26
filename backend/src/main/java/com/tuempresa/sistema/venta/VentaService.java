@@ -54,6 +54,9 @@ public class VentaService {
     @Inject
     UsuarioActual usuarioActual;
 
+    @Inject
+    PagoService pagos;
+
     @Transactional
     public CatalogoPageResponse catalogo(String q, Long categoriaId, int page, int size) {
         StringBuilder sql = new StringBuilder(
@@ -146,7 +149,9 @@ public class VentaService {
             movimientos.add(movimiento);
         }
 
-        Pago pago = calcularPago(solicitud, total.setScale(2, RoundingMode.HALF_UP));
+        PagoService.Pago pago = pagos.calcular(solicitud.metodoPago(), solicitud.efectivoRecibido(),
+                solicitud.montoEfectivo(), solicitud.medioTransferencia(),
+                total.setScale(2, RoundingMode.HALF_UP));
 
         Venta venta = new Venta();
         venta.cajaId = caja.id;
@@ -184,37 +189,6 @@ public class VentaService {
                 .createQuery("from VentaItem where ventaId = ?1 order by id", VentaItem.class)
                 .setParameter(1, ventaId)
                 .getResultList();
-    }
-
-    private Pago calcularPago(CrearVentaRequest solicitud, BigDecimal total) {
-        return switch (solicitud.metodoPago()) {
-            case EFECTIVO -> {
-                BigDecimal recibido = solicitud.efectivoRecibido();
-                if (recibido == null || recibido.compareTo(total) < 0) {
-                    throw Errores.badRequest("El efectivo recibido debe cubrir el total de la venta");
-                }
-                yield new Pago(total, CERO, recibido.setScale(2, RoundingMode.HALF_UP),
-                        recibido.subtract(total).setScale(2, RoundingMode.HALF_UP), null);
-            }
-            case TRANSFERENCIA -> {
-                if (solicitud.medioTransferencia() == null) {
-                    throw Errores.badRequest("Selecciona Yape o Plin para la transferencia");
-                }
-                yield new Pago(CERO, total, null, CERO, solicitud.medioTransferencia());
-            }
-            case AMBOS -> {
-                if (solicitud.medioTransferencia() == null) {
-                    throw Errores.badRequest("Selecciona Yape o Plin para la transferencia");
-                }
-                BigDecimal efectivo = solicitud.montoEfectivo();
-                if (efectivo == null || efectivo.signum() <= 0 || efectivo.compareTo(total) >= 0) {
-                    throw Errores.badRequest("El efectivo debe ser mayor que cero y menor que el total");
-                }
-                yield new Pago(efectivo.setScale(2, RoundingMode.HALF_UP),
-                        total.subtract(efectivo).setScale(2, RoundingMode.HALF_UP),
-                        null, CERO, solicitud.medioTransferencia());
-            }
-        };
     }
 
     private CatalogoItemResponse aCatalogoItem(Object[] fila) {
@@ -267,7 +241,4 @@ public class VentaService {
         return valor.stripTrailingZeros().scale() <= 0;
     }
 
-    private record Pago(BigDecimal efectivo, BigDecimal transferencia, BigDecimal recibido,
-            BigDecimal vuelto, MedioTransferencia medio) {
-    }
 }

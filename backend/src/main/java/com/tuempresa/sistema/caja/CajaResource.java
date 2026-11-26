@@ -27,6 +27,7 @@ public class CajaResource {
 
     @GET
     @Path("/actual")
+    @RequiereModulo({Modulo.CAJA, Modulo.VENTA, Modulo.CLIENTES})
     public CajaActualResponse actual() {
         return servicio.actual();
     }

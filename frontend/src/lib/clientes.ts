@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import type { TipoVenta } from "@/lib/inventario";
+import type { MedioTransferencia, MetodoPago } from "@/lib/venta";
 
 export interface ConfigEdificio {
   configurado: boolean;
@@ -88,6 +89,13 @@ export interface SolicitudFiado {
   items: ItemFiado[];
 }
 
+export interface SolicitudPagoEnvio {
+  metodoPago: MetodoPago;
+  efectivoRecibido?: number | null;
+  montoEfectivo?: number | null;
+  medioTransferencia?: MedioTransferencia | null;
+}
+
 export type NivelDeuda = "edificio" | "torre" | "piso";
 
 /** Los envíos usan internamente la misma entidad y endpoint de fiados. */
@@ -119,5 +127,6 @@ export const clientesApi = {
   deudas: (nivel: NivelDeuda, torre?: number, piso?: number) =>
     api.get<DeudaGrupo[]>(`/fiados/deudas${consulta({ nivel, torre, piso })}`),
   registrarEnvio: (datos: SolicitudEnvio) => api.post<Envio[]>("/fiados", datos),
-  pagar: (id: number) => api.patch<Envio>(`/fiados/${id}/pagar`),
+  pagar: (id: number, datos: SolicitudPagoEnvio) =>
+    api.patch<Envio>(`/fiados/${id}/pagar`, datos),
 };

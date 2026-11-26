@@ -11,20 +11,26 @@ import {
   Settings2,
   type LucideIcon,
 } from "lucide-react";
+import { ElegirMedioSheet } from "@/components/pago/ElegirMedioSheet";
+import { FormaPago } from "@/components/pago/FormaPago";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ApiError } from "@/lib/api";
+import { cajaApi } from "@/lib/caja";
 import {
   clientesApi,
   type Departamento,
   type Envio,
   type NivelDeuda,
+  type SolicitudPagoEnvio,
 } from "@/lib/clientes";
 import { fechaHora } from "@/lib/fechas";
 import { cantidad, dinero } from "@/lib/inventario";
+import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { pagoValido, type MedioTransferencia, type MetodoPago } from "@/lib/venta";
 
 const ESTILO_CAMPO =
   "h-11 w-full rounded-field border border-line bg-app px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40";
@@ -117,7 +123,7 @@ function FilaEnvio({
         <span className="text-sm font-bold text-ink">{dinero(envio.subtotal)}</span>
         {envio.estado === "PENDIENTE" && (
           <Button type="button" size="sm" variant="secondary" disabled={pagando} onClick={onPagar}>
-            {pagando ? "Pagando…" : "Marcar pagado"}
+            {pagando ? "Pagando…" : "Pagar envío"}
           </Button>
         )}
       </div>
@@ -132,6 +138,11 @@ export default function ClientesPage() {
   const [hoja, setHoja] = useState<Hoja | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  const [envioPagando, setEnvioPagando] = useState<Envio | null>(null);
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
+  const [recibido, setRecibido] = useState("");
+  const [efectivo, setEfectivo] = useState("");
+  const [elegirMedio, setElegirMedio] = useState(false);
 
   const [torresTexto, setTorresTexto] = useState("1");
   const [pisosTexto, setPisosTexto] = useState("1");
@@ -159,6 +170,13 @@ export default function ClientesPage() {
     queryFn: clientesApi.configuracion,
   });
   const configurado = config.data?.configurado ?? false;
+
+  const caja = useQuery({
+    queryKey: ["caja", "actual"],
+    queryFn: cajaApi.actual,
+    refetchInterval: REFRESCO_RAPIDO,
+  });
+  const cajaAbierta = caja.data?.abierta === true;
 
   const torres = useQuery({
     queryKey: ["clientes", "torres"],
@@ -228,20 +246,88 @@ export default function ClientesPage() {
   });
 
   const pagar = useMutation({
-    mutationFn: clientesApi.pagar,
+    mutationFn: ({ id, datos }: { id: number; datos: SolicitudPagoEnvio }) =>
+      clientesApi.pagar(id, datos),
     onSuccess: async () => {
+      setEnvioPagando(null);
+      setElegirMedio(false);
+      setRecibido("");
+      setEfectivo("");
       setErrorAccion(null);
-      setAviso("Envío marcado como pagado.");
-      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      setAviso("Envío pagado y venta registrada.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["clientes"] }),
+        queryClient.invalidateQueries({ queryKey: ["caja"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["historial"] }),
+      ]);
     },
     onError: (error) => {
       if (esUbicacionEliminada(error)) {
+        setEnvioPagando(null);
         reiniciarPorCambioExterno();
         return;
       }
-      setErrorAccion(mensajeDe(error, "No se pudo marcar el envío como pagado."));
+      setErrorAccion(mensajeDe(error, "No se pudo pagar el envío."));
+      if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+        void queryClient.invalidateQueries({ queryKey: ["caja"] });
+      }
     },
   });
+
+  const totalPago = Number(envioPagando?.subtotal ?? 0);
+  const puedePagar =
+    envioPagando !== null &&
+    cajaAbierta &&
+    pagoValido(metodoPago, totalPago, Number(recibido), Number(efectivo));
+
+  function abrirPago(envio: Envio) {
+    setAviso(null);
+    setErrorAccion(null);
+    setEnvioPagando(envio);
+    setMetodoPago("EFECTIVO");
+    setRecibido("");
+    setEfectivo("");
+    setElegirMedio(false);
+  }
+
+  function cerrarPago(abierto: boolean) {
+    if (abierto) return;
+    setEnvioPagando(null);
+    setElegirMedio(false);
+    setErrorAccion(null);
+  }
+
+  function confirmarPago() {
+    if (!envioPagando || !puedePagar) return;
+    if (metodoPago === "TRANSFERENCIA" || metodoPago === "AMBOS") {
+      setErrorAccion(null);
+      setElegirMedio(true);
+      return;
+    }
+    pagar.mutate({
+      id: envioPagando.id,
+      datos: {
+        metodoPago,
+        efectivoRecibido: Number(recibido),
+        montoEfectivo: null,
+        medioTransferencia: null,
+      },
+    });
+  }
+
+  function confirmarMedio(medio: MedioTransferencia) {
+    if (!envioPagando) return;
+    pagar.mutate({
+      id: envioPagando.id,
+      datos: {
+        metodoPago,
+        efectivoRecibido: metodoPago === "EFECTIVO" ? Number(recibido) : null,
+        montoEfectivo: metodoPago === "AMBOS" ? Number(efectivo) : null,
+        medioTransferencia: medio,
+      },
+    });
+  }
 
   function enviarConfiguracion(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -566,7 +652,7 @@ export default function ClientesPage() {
                 {aviso}
               </p>
             )}
-            {errorAccion && (
+            {errorAccion && envioPagando === null && (
               <p role="alert" className="mb-3 rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
                 {errorAccion}
               </p>
@@ -597,11 +683,7 @@ export default function ClientesPage() {
                         key={envio.id}
                         envio={envio}
                         pagando={pagar.isPending}
-                        onPagar={() => {
-                          setAviso(null);
-                          setErrorAccion(null);
-                          pagar.mutate(envio.id);
-                        }}
+                        onPagar={() => abrirPago(envio)}
                       />
                     ))}
                   </ul>
@@ -645,11 +727,7 @@ export default function ClientesPage() {
                                     key={envio.id}
                                     envio={envio}
                                     pagando={pagar.isPending}
-                                    onPagar={() => {
-                                      setAviso(null);
-                                      setErrorAccion(null);
-                                      pagar.mutate(envio.id);
-                                    }}
+                                    onPagar={() => abrirPago(envio)}
                                   />
                                 ))}
                               </ul>
@@ -667,6 +745,47 @@ export default function ClientesPage() {
           </SheetContent>
         )}
       </Sheet>
+
+      <Sheet open={envioPagando !== null} onOpenChange={cerrarPago}>
+        {envioPagando && (
+          <SheetContent side="bottom" title="Pagar envío" className="overflow-y-auto">
+            <div className="mb-5 pr-10">
+              <h3 className="text-lg font-bold tracking-tight text-ink">Pagar envío</h3>
+              <p className="mt-1 text-sm text-ink-soft">
+                {envioPagando.nombreProducto} · {cantidad(envioPagando.cantidad)}{" "}
+                {envioPagando.tipoVenta === "KILO" ? "kg" : "und"} ·{" "}
+                {dinero(envioPagando.subtotal)}
+              </p>
+              <p className="mt-1 text-xs text-ink-soft">
+                Se registrará una venta finalizada con este cobro.
+              </p>
+            </div>
+            <FormaPago
+              idBase="pago-envio"
+              total={totalPago}
+              metodoPago={metodoPago}
+              onMetodo={setMetodoPago}
+              recibido={recibido}
+              onRecibido={setRecibido}
+              efectivo={efectivo}
+              onEfectivo={setEfectivo}
+              cajaAbierta={cajaAbierta}
+              pendiente={pagar.isPending}
+              puedeFinalizar={puedePagar}
+              mensaje={errorAccion}
+              onFinalizar={confirmarPago}
+              etiquetaFinalizar="Confirmar pago"
+            />
+          </SheetContent>
+        )}
+      </Sheet>
+
+      <ElegirMedioSheet
+        abierto={elegirMedio && envioPagando !== null}
+        total={totalPago}
+        onElegir={confirmarMedio}
+        onCerrar={() => setElegirMedio(false)}
+      />
 
       <Sheet
         open={editando}

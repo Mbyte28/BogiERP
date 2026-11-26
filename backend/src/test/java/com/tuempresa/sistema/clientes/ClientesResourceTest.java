@@ -13,6 +13,7 @@ import com.tuempresa.sistema.common.security.AuthResourceTest;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.path.json.JsonPath;
+import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import java.sql.Connection;
@@ -172,11 +173,7 @@ class ClientesResourceTest {
                 .body("message", containsString("envíos activos"))
                 .body("message", containsString("Torre 1 Departamento " + (100 + actuales.deptos)));
 
-        given()
-                .cookie(COOKIE, token)
-                .patch("/fiados/{id}/pagar", fiadoId)
-                .then()
-                .statusCode(200);
+        pagar(token, fiadoId).then().statusCode(200);
     }
 
     @Test
@@ -187,11 +184,7 @@ class ClientesResourceTest {
         long departamentoId = ultimoDepartamento(token, actuales.deptos);
         long fiadoId = crearFiado(token, departamentoId, productoId);
 
-        given()
-                .cookie(COOKIE, token)
-                .patch("/fiados/{id}/pagar", fiadoId)
-                .then()
-                .statusCode(200);
+        pagar(token, fiadoId).then().statusCode(200);
         assertEquals("FIADO", movimientoDe(productoId).get(0));
 
         given()
@@ -278,10 +271,12 @@ class ClientesResourceTest {
                 .getLong("[0].id");
     }
 
-    private long contar(String sql, long parametro) throws Exception {
+    private long contar(String sql, long... parametros) throws Exception {
         try (Connection conexion = dataSource.getConnection();
                 PreparedStatement consulta = conexion.prepareStatement(sql)) {
-            consulta.setLong(1, parametro);
+            for (int indice = 0; indice < parametros.length; indice++) {
+                consulta.setLong(indice + 1, parametros[indice]);
+            }
             try (ResultSet resultados = consulta.executeQuery()) {
                 assertTrue(resultados.next());
                 return resultados.getLong(1);
@@ -359,16 +354,15 @@ class ClientesResourceTest {
         assertEquals("-2.000", movimiento.get(1));
         assertEquals(String.valueOf(fiadoId), movimiento.get(2));
 
-        given()
-                .cookie(COOKIE, token)
-                .patch("/fiados/{id}/pagar", fiadoId)
-                .then()
+        pagar(token, fiadoId).then()
                 .statusCode(200)
                 .body("estado", equalTo("PAGADO"))
                 .body("pagadoEn", org.hamcrest.Matchers.notNullValue());
 
         given()
                 .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"EFECTIVO\",\"efectivoRecibido\":100.00}")
                 .patch("/fiados/{id}/pagar", fiadoId)
                 .then()
                 .statusCode(409)
@@ -491,9 +485,145 @@ class ClientesResourceTest {
                 .statusCode(403);
         given()
                 .cookie(COOKIE, tokenVenta)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"EFECTIVO\",\"efectivoRecibido\":100.00}")
                 .patch("/fiados/{id}/pagar", envioVenta)
                 .then()
                 .statusCode(403);
+    }
+
+    @Test
+    void pagarEnvioGeneraVentaFinalizadaSinDescontarStockOtraVez() throws Exception {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        configurarSiHaceFalta(token);
+        String nombre = "Envío venta final " + sufijo();
+        long productoId = crearProducto(token, nombre, "5.00", "2.00", "10");
+        long departamentoId = primerDepartamento(token);
+        long fiadoId = crearFiado(token, departamentoId, productoId);
+        String stockAntes = stockDe(productoId);
+
+        pagar(token, fiadoId).then()
+                .statusCode(200)
+                .body("estado", equalTo("PAGADO"));
+        long cajaId = given()
+                .cookie(COOKIE, token)
+                .get("/caja/actual")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath()
+                .getLong("caja.cajaId");
+
+        assertEquals(stockAntes, stockDe(productoId));
+        assertEquals(1, contar("select count(*) from movimiento_stock "
+                + "where producto_id = ? and tipo = 'FIADO'", productoId));
+        assertEquals(1, contar("select count(*) from venta_item vi join venta v on v.id = vi.venta_id "
+                + "where vi.producto_id = ? and v.fiado_id = ?", productoId, fiadoId));
+
+        given()
+                .cookie(COOKIE, token)
+                .get("/caja/{id}/ventas", cajaId)
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(1))
+                .body("[0].metodoPago", equalTo("EFECTIVO"))
+                .body("[0].total", equalTo(5.00f))
+                .body("[0].efectivoRecibido", equalTo(100.00f))
+                .body("[0].items[0].nombreProducto", equalTo(nombre));
+
+        assertEquals(1, contar("select count(*) from v_lineas_ingreso where producto_id = ? and origen = 'VENTA'", productoId));
+        assertEquals(0, contar("select count(*) from v_lineas_ingreso where producto_id = ? and origen = 'FIADO'", productoId));
+    }
+
+    @Test
+    void pagarEnvioConTransferenciaValidaElMedio() throws Exception {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        configurarSiHaceFalta(token);
+        long productoId = crearProducto(token, "Envío yape " + sufijo(), "5.00", "2.00", "10");
+        long fiadoId = crearFiado(token, primerDepartamento(token), productoId);
+        abrirCaja(token);
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"TRANSFERENCIA\"}")
+                .patch("/fiados/{id}/pagar", fiadoId)
+                .then()
+                .statusCode(400)
+                .body("message", containsString("Yape o Plin"));
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"TRANSFERENCIA\",\"medioTransferencia\":\"YAPE\"}")
+                .patch("/fiados/{id}/pagar", fiadoId)
+                .then()
+                .statusCode(200)
+                .body("estado", equalTo("PAGADO"));
+
+        assertEquals(1, contar("select count(*) from venta "
+                + "where fiado_id = ? and medio_transferencia = 'YAPE' and monto_transferencia = 5", fiadoId));
+    }
+
+    @Test
+    void pagarEnvioConAmbosDivideElCobroEntreEfectivoYTransferencia() throws Exception {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        configurarSiHaceFalta(token);
+        long productoId = crearProducto(token, "Envío ambos " + sufijo(), "5.00", "2.00", "10");
+        long fiadoId = crearFiado(token, primerDepartamento(token), productoId);
+        abrirCaja(token);
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"AMBOS\",\"montoEfectivo\":2.00,\"medioTransferencia\":\"PLIN\"}")
+                .patch("/fiados/{id}/pagar", fiadoId)
+                .then()
+                .statusCode(200)
+                .body("estado", equalTo("PAGADO"));
+
+        assertEquals(1, contar("select count(*) from venta where fiado_id = ? "
+                + "and metodo_pago = 'AMBOS' and monto_efectivo = 2 and monto_transferencia = 3 "
+                + "and medio_transferencia = 'PLIN'", fiadoId));
+    }
+
+    @Test
+    void pagarEnvioRequiereCajaAbierta() throws Exception {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        configurarSiHaceFalta(token);
+        long productoId = crearProducto(token, "Envío sin caja " + sufijo(), "5.00", "2.00", "10");
+        long fiadoId = crearFiado(token, primerDepartamento(token), productoId);
+        given().cookie(COOKIE, token).post("/caja/cerrar");
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"EFECTIVO\",\"efectivoRecibido\":10.00}")
+                .patch("/fiados/{id}/pagar", fiadoId)
+                .then()
+                .statusCode(400)
+                .body("message", containsString("Abre la caja"));
+    }
+
+    private long abrirCaja(String token) {
+        given().cookie(COOKIE, token).post("/caja/cerrar");
+        return given()
+                .cookie(COOKIE, token)
+                .post("/caja/abrir")
+                .then()
+                .statusCode(201)
+                .extract()
+                .jsonPath()
+                .getLong("cajaId");
+    }
+
+    private Response pagar(String token, long fiadoId) {
+        abrirCaja(token);
+        return given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"EFECTIVO\",\"efectivoRecibido\":100.00}")
+                .patch("/fiados/{id}/pagar", fiadoId);
     }
 
     private boolean edificioConfigurado(String token) {

@@ -10,8 +10,9 @@ import {
   ShoppingBasket,
   ShoppingCart,
   Trash2,
-  Wallet,
 } from "lucide-react";
+import { ElegirMedioSheet } from "@/components/pago/ElegirMedioSheet";
+import { FormaPago } from "@/components/pago/FormaPago";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,10 +30,9 @@ import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { IconoCategoria } from "@/modules/inventario/IconoCategoria";
 import { EnvioSheet } from "./EnvioSheet";
 import {
+  pagoValido,
   totalTicket,
-  transferencia,
   ventaApi,
-  vuelto,
   type ItemCatalogo,
   type LineaTicket,
   type MedioTransferencia,
@@ -42,11 +42,6 @@ import {
 } from "@/lib/venta";
 
 const TAMANO = 25;
-const METODOS: { clave: MetodoPago; nombre: string }[] = [
-  { clave: "EFECTIVO", nombre: "Efectivo" },
-  { clave: "TRANSFERENCIA", nombre: "Transferencia" },
-  { clave: "AMBOS", nombre: "Ambos" },
-];
 
 export default function VentaPage() {
   const cliente = useQueryClient();
@@ -113,13 +108,8 @@ export default function VentaPage() {
   const recibidoNumero = Number(recibido);
   const efectivoNumero = Number(efectivo);
   const cajaAbierta = caja.data?.abierta === true;
-  const pagoValido =
-    metodoPago === "EFECTIVO"
-      ? Number.isFinite(recibidoNumero) && recibidoNumero >= total
-      : metodoPago === "AMBOS"
-        ? efectivoNumero > 0 && efectivoNumero < total
-        : true;
-  const puedeFinalizar = cajaAbierta && lineas.length > 0 && total > 0 && pagoValido;
+  const puedeFinalizar =
+    cajaAbierta && lineas.length > 0 && pagoValido(metodoPago, total, recibidoNumero, efectivoNumero);
 
   function agregar(producto: ItemCatalogo) {
     setMensaje(null);
@@ -392,36 +382,12 @@ export default function VentaPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={elegirMedio} onOpenChange={(estado) => !estado && setElegirMedio(false)}>
-        <SheetContent
-          side="bottom"
-          title="Yape o Plin"
-          className="sm:inset-y-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:h-auto sm:w-[min(100%,420px)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
-        >
-          <div className="text-center">
-            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-              <Wallet />
-            </span>
-            <h3 className="mt-4 text-lg font-bold text-ink">¿Con qué billetera pagaron?</h3>
-            <p className="mt-1 text-sm text-ink-soft">
-              Total a transferir: {dinero(total)}
-            </p>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            {(["YAPE", "PLIN"] as const).map((medio) => (
-              <Button
-                key={medio}
-                type="button"
-                size="lg"
-                variant={medio === "YAPE" ? "default" : "secondary"}
-                onClick={() => confirmarMedio(medio)}
-              >
-                {medio === "YAPE" ? "Yape" : "Plin"}
-              </Button>
-            ))}
-          </div>
-        </SheetContent>
-      </Sheet>
+      <ElegirMedioSheet
+        abierto={elegirMedio}
+        total={total}
+        onElegir={confirmarMedio}
+        onCerrar={() => setElegirMedio(false)}
+      />
 
       <Sheet
         open={ventaExitosa !== null}
@@ -596,9 +562,6 @@ function Ticket({
   onEnviar,
   avisoEnvio,
 }: TicketProps) {
-  const recibidoNumero = Number(recibido);
-  const efectivoNumero = Number(efectivo);
-
   return (
     <Card>
       <CardHeader>
@@ -693,115 +656,21 @@ function Ticket({
           <span className="text-2xl font-bold text-ink">{dinero(total)}</span>
         </div>
 
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase text-ink-soft">
-            Método de pago
-          </p>
-          <div role="group" aria-label="Método de pago" className="flex gap-2 rounded-full bg-app p-1">
-            {METODOS.map((metodo) => (
-              <button
-                key={metodo.clave}
-                type="button"
-                aria-pressed={metodoPago === metodo.clave}
-                onClick={() => onMetodo(metodo.clave)}
-                className={`min-h-11 flex-1 rounded-full px-2 text-xs font-semibold transition-colors ${
-                  metodoPago === metodo.clave
-                    ? "bg-primary-500 text-white"
-                    : "text-ink-soft hover:bg-surface"
-                }`}
-              >
-                {metodo.nombre}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {metodoPago === "EFECTIVO" && (
-          <div className="space-y-3">
-            <label
-              htmlFor={`${idBase}-recibido`}
-              className="block text-xs font-semibold uppercase text-ink-soft"
-            >
-              Recibido
-            </label>
-            <div className="flex gap-2">
-              <input
-                id={`${idBase}-recibido`}
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                value={recibido}
-                onChange={(evento) => onRecibido(evento.target.value)}
-                placeholder="0.00"
-                className="h-12 min-w-0 flex-1 rounded-field border border-line bg-surface px-4 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => onRecibido(String(total))}
-              >
-                Exacto
-              </Button>
-            </div>
-            <p className="text-sm text-ink-soft">
-              Vuelto a dar:{" "}
-              <span className="font-bold text-ink">
-                {dinero(vuelto(total, recibidoNumero))}
-              </span>
-            </p>
-          </div>
-        )}
-
-        {metodoPago === "AMBOS" && (
-          <div className="space-y-3">
-            <label
-              htmlFor={`${idBase}-efectivo`}
-              className="block text-xs font-semibold uppercase text-ink-soft"
-            >
-              Efectivo
-            </label>
-            <input
-              id={`${idBase}-efectivo`}
-              type="number"
-              min="0"
-              step="0.01"
-              inputMode="decimal"
-              value={efectivo}
-              onChange={(evento) => onEfectivo(evento.target.value)}
-              placeholder="0.00"
-              className="h-12 w-full rounded-field border border-line bg-surface px-4 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-            />
-            <p className="text-sm text-ink-soft">
-              Recibido en transferencia:{" "}
-              <span className="font-bold text-ink">
-                {dinero(transferencia(total, efectivoNumero))}
-              </span>
-            </p>
-          </div>
-        )}
-
-        {metodoPago === "TRANSFERENCIA" && (
-          <p className="rounded-field bg-info/10 px-4 py-3 text-sm text-info">
-            Total a transferir: {dinero(total)}. Elige Yape o Plin al finalizar.
-          </p>
-        )}
-
-        {mensaje && (
-          <p role="alert" className="rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
-            {mensaje}
-          </p>
-        )}
-
-        <Button
-          type="button"
-          size="lg"
-          className="w-full"
-          disabled={!puedeFinalizar || pendiente}
-          onClick={onFinalizar}
-        >
-          {pendiente ? "Registrando…" : "Finalizar venta"}
-        </Button>
+        <FormaPago
+          idBase={idBase}
+          total={total}
+          metodoPago={metodoPago}
+          onMetodo={onMetodo}
+          recibido={recibido}
+          onRecibido={onRecibido}
+          efectivo={efectivo}
+          onEfectivo={onEfectivo}
+          cajaAbierta={cajaAbierta}
+          pendiente={pendiente}
+          puedeFinalizar={puedeFinalizar}
+          mensaje={mensaje}
+          onFinalizar={onFinalizar}
+        />
       </CardContent>
     </Card>
   );

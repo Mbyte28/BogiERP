@@ -120,6 +120,10 @@ function simularApi({
 
       if (fallar) return respuesta({ message: "No se pudo cargar el edificio." }, 500);
 
+      if (url.includes("/caja/actual")) {
+        return respuesta({ abierta: true, caja: { cajaId: 1 } });
+      }
+
       if (url.includes("/edificio/config")) {
         if (metodo === "POST") {
           estado.configurado = true;
@@ -198,6 +202,13 @@ async function navegarAlDepartamento() {
   return screen.findByRole("button", { name: "Ver envíos de Torre 1 Departamento 101" });
 }
 
+async function pagarConEfectivoExacto(panel: HTMLElement) {
+  fireEvent.click(await within(panel).findByRole("button", { name: "Pagar envío" }));
+  const pago = await screen.findByRole("dialog", { name: "Pagar envío" });
+  fireEvent.click(within(pago).getByRole("button", { name: "Exacto" }));
+  fireEvent.click(within(pago).getByRole("button", { name: "Confirmar pago" }));
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -258,7 +269,7 @@ describe("ClientesPage", () => {
     expect(screen.queryByRole("button", { name: "Ver torre 1" })).not.toBeInTheDocument();
   });
 
-  it("muestra los envíos del departamento y permite marcarlos como pagados", async () => {
+  it("muestra los envíos del departamento y permite pagarlos con el modal de ventas", async () => {
     const peticiones = simularApi();
     renderizar();
 
@@ -270,22 +281,88 @@ describe("ClientesPage", () => {
     expect(within(detalle).queryByRole("button", { name: "Registrar fiado" })).not.toBeInTheDocument();
     expect(within(detalle).queryByRole("button", { name: "Registrar envío" })).not.toBeInTheDocument();
 
-    fireEvent.click(within(detalle).getByRole("button", { name: "Marcar pagado" }));
+    await pagarConEfectivoExacto(detalle);
 
     await waitFor(() =>
       expect(
         within(screen.getByRole("dialog", { name: "Torre 1 Departamento 101" })).getByText("Pagado"),
       ).toBeInTheDocument(),
     );
-    expect(
-      peticiones.mock.calls.some(([url, init]) =>
-        url.includes("/fiados/1/pagar") && init?.method === "PATCH",
-      ),
-    ).toBe(true);
+    const cobro = peticiones.mock.calls.find(([url, init]) =>
+      url.includes("/fiados/1/pagar") && init?.method === "PATCH",
+    );
+    expect(cobro).toBeDefined();
+    expect(JSON.parse(String(cobro?.[1]?.body))).toMatchObject({
+      metodoPago: "EFECTIVO",
+      efectivoRecibido: 10,
+      medioTransferencia: null,
+    });
     expect(
       peticiones.mock.calls.some(([url, init]) => url.endsWith("/fiados") && init?.method === "POST"),
     ).toBe(false);
-    expect(await screen.findByText("Envío marcado como pagado.")).toBeInTheDocument();
+    expect(await screen.findByText("Envío pagado y venta registrada.")).toBeInTheDocument();
+  });
+
+  it("paga el envío por transferencia eligiendo Yape o Plin", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    fireEvent.click(await navegarAlDepartamento());
+    const detalle = await screen.findByRole("dialog", { name: "Torre 1 Departamento 101" });
+    fireEvent.click(await within(detalle).findByRole("button", { name: "Pagar envío" }));
+    const pago = await screen.findByRole("dialog", { name: "Pagar envío" });
+    fireEvent.click(within(pago).getByRole("button", { name: "Transferencia" }));
+    fireEvent.click(within(pago).getByRole("button", { name: "Confirmar pago" }));
+
+    const billetera = await screen.findByRole("dialog", { name: "Yape o Plin" });
+    fireEvent.click(within(billetera).getByRole("button", { name: "Plin" }));
+
+    await waitFor(() =>
+      expect(
+        peticiones.mock.calls.some(([url, init]) =>
+          url.includes("/fiados/1/pagar") && init?.method === "PATCH",
+        ),
+      ).toBe(true),
+    );
+    const cobro = peticiones.mock.calls.find(([url, init]) =>
+      url.includes("/fiados/1/pagar") && init?.method === "PATCH",
+    );
+    expect(JSON.parse(String(cobro?.[1]?.body))).toMatchObject({
+      metodoPago: "TRANSFERENCIA",
+      medioTransferencia: "PLIN",
+    });
+    expect(await screen.findByText("Envío pagado y venta registrada.")).toBeInTheDocument();
+  });
+
+  it("paga el envío con efectivo y transferencia a la vez", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    fireEvent.click(await navegarAlDepartamento());
+    const detalle = await screen.findByRole("dialog", { name: "Torre 1 Departamento 101" });
+    fireEvent.click(await within(detalle).findByRole("button", { name: "Pagar envío" }));
+    const pago = await screen.findByRole("dialog", { name: "Pagar envío" });
+    fireEvent.click(within(pago).getByRole("button", { name: "Ambos" }));
+    fireEvent.change(within(pago).getByLabelText("Efectivo"), { target: { value: "4" } });
+    fireEvent.click(within(pago).getByRole("button", { name: "Confirmar pago" }));
+    const billetera = await screen.findByRole("dialog", { name: "Yape o Plin" });
+    fireEvent.click(within(billetera).getByRole("button", { name: "Yape" }));
+
+    await waitFor(() =>
+      expect(
+        peticiones.mock.calls.some(([url, init]) =>
+          url.includes("/fiados/1/pagar") && init?.method === "PATCH",
+        ),
+      ).toBe(true),
+    );
+    const cobro = peticiones.mock.calls.find(([url, init]) =>
+      url.includes("/fiados/1/pagar") && init?.method === "PATCH",
+    );
+    expect(JSON.parse(String(cobro?.[1]?.body))).toMatchObject({
+      metodoPago: "AMBOS",
+      montoEfectivo: 4,
+      medioTransferencia: "YAPE",
+    });
   });
 
   it("vuelve al inicio si el departamento fue borrado desde otro dispositivo", async () => {
@@ -294,7 +371,7 @@ describe("ClientesPage", () => {
 
     fireEvent.click(await navegarAlDepartamento());
     const detalle = await screen.findByRole("dialog", { name: "Torre 1 Departamento 101" });
-    fireEvent.click(await within(detalle).findByRole("button", { name: "Marcar pagado" }));
+    await pagarConEfectivoExacto(detalle);
 
     expect(await screen.findByRole("status")).toHaveTextContent("ya no existe");
     expect(await screen.findByRole("button", { name: "Ver torre 1" })).toBeInTheDocument();
@@ -313,10 +390,10 @@ describe("ClientesPage", () => {
       peticiones.mock.calls.some(([url]) => url.includes("/fiados/deudas?nivel=edificio")),
     ).toBe(true);
 
-    fireEvent.click(within(panel).getByRole("button", { name: "Marcar pagado" }));
+    await pagarConEfectivoExacto(panel);
 
     expect(await within(panel).findByText("No hay envíos activos.")).toBeInTheDocument();
-    expect(within(panel).getByText("Envío marcado como pagado.")).toBeInTheDocument();
+    expect(within(panel).getByText("Envío pagado y venta registrada.")).toBeInTheDocument();
   });
 
   it("muestra estados vacíos cuando no hay envíos", async () => {

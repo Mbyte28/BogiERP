@@ -4,6 +4,24 @@ import type { TipoVenta } from "@/lib/inventario";
 export type MetodoPago = "EFECTIVO" | "TRANSFERENCIA" | "AMBOS";
 export type MedioTransferencia = "YAPE" | "PLIN";
 
+export const METODOS_PAGO: { clave: MetodoPago; nombre: string }[] = [
+  { clave: "EFECTIVO", nombre: "Efectivo" },
+  { clave: "TRANSFERENCIA", nombre: "Transferencia" },
+  { clave: "AMBOS", nombre: "Ambos" },
+];
+
+export function pagoValido(
+  metodo: MetodoPago,
+  total: number,
+  recibido: number,
+  efectivo: number,
+): boolean {
+  if (total <= 0) return false;
+  if (metodo === "EFECTIVO") return Number.isFinite(recibido) && recibido >= total;
+  if (metodo === "AMBOS") return efectivo > 0 && efectivo < total;
+  return true;
+}
+
 export interface ItemCatalogo {
   id: number;
   nombre: string;

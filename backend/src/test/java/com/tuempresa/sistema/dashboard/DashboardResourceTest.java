@@ -71,8 +71,13 @@ class DashboardResourceTest {
         assertEquals(2.0, pendiente.unidades - antes.unidades, 0.02);
         assertEquals(antes.lineas + 1, pendiente.lineas);
 
+        given().cookie(COOKIE, token).post("/caja/cerrar");
+        given().cookie(COOKIE, token).post("/caja/abrir").then().statusCode(201);
+
         given()
                 .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"metodoPago\":\"EFECTIVO\",\"efectivoRecibido\":15.00}")
                 .patch("/fiados/{id}/pagar", fiado)
                 .then()
                 .statusCode(200);

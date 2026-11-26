@@ -49,6 +49,10 @@ public class Venta extends PanacheEntityBase {
     @Column(name = "medio_transferencia", length = 10)
     public MedioTransferencia medioTransferencia;
 
+    /** Venta generada al pagar un envío; NULL en ventas de mostrador. */
+    @Column(name = "fiado_id")
+    public Long fiadoId;
+
     @Column(name = "creado_en", nullable = false)
     public Instant creadoEn = Instant.now();
 }
