@@ -240,6 +240,10 @@ describe("ClientesPage", () => {
       ),
     ).toBe(true);
 
+    const grillaTorres = screen.getByRole("button", { name: "Ver torre 1" }).parentElement;
+    expect(grillaTorres).toHaveClass("w-fit");
+    expect(grillaTorres?.parentElement).toHaveClass("justify-center");
+
     fireEvent.click(screen.getByRole("button", { name: "Ver torre 1" }));
     expect(await screen.findByRole("button", { name: "Ver piso 1 de la torre 1" })).toBeInTheDocument();
 
@@ -250,8 +254,13 @@ describe("ClientesPage", () => {
     expect(
       screen.getByRole("button", { name: "Ver fiados de Torre 1 Departamento 102" }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/elige un cuadrado para continuar/)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Volver a pisos" }));
+    const volver = screen.getByRole("button", { name: "Volver a pisos" });
+    const revisar = screen.getByRole("button", { name: "Revisar fiados" });
+    expect(volver.parentElement).toBe(revisar.parentElement);
+
+    fireEvent.click(volver);
     expect(await screen.findByRole("button", { name: "Ver piso 1 de la torre 1" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Volver a torres" }));
     expect(await screen.findByRole("button", { name: "Ver torre 1" })).toBeInTheDocument();

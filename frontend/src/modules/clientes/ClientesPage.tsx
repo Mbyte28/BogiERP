@@ -494,21 +494,11 @@ export default function ClientesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          {torre !== null && (
-            <button
-              type="button"
-              onClick={() => (piso !== null ? setPiso(null) : setTorre(null))}
-              className="flex min-h-11 items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-500"
-            >
-              <ArrowLeft />
-              {piso !== null ? "Volver a pisos" : "Volver a torres"}
-            </button>
-          )}
           {titulo && (
-            <h2 className="mt-1 text-lg font-bold tracking-tight text-ink sm:text-xl">{titulo}</h2>
+            <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">{titulo}</h2>
           )}
           <p className="mt-1 text-sm text-ink-soft">
-            {config.data?.totalDepartamentos} departamentos · elige un cuadrado para continuar.
+            {config.data?.totalDepartamentos} departamentos.
           </p>
         </div>
         <Button type="button" aria-label="Editar sistema de torres" onClick={abrirEditor}>
@@ -518,27 +508,43 @@ export default function ClientesPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3">
-          <div>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <CardTitle>{piso !== null ? "Departamentos" : torre !== null ? "Pisos" : "Torres"}</CardTitle>
             <p className="text-sm text-ink-soft">
               Coral indica fiados pendientes; menta significa que está al día.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            aria-label="Revisar fiados"
-            onClick={() => {
-              setAviso(null);
-              setErrorAccion(null);
-              setHoja({ tipo: "deudas" });
-            }}
-          >
-            <ClipboardList />
-            <span className="hidden sm:inline">Revisar fiados</span>
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {torre !== null && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={piso !== null ? "Volver a pisos" : "Volver a torres"}
+                onClick={() => (piso !== null ? setPiso(null) : setTorre(null))}
+              >
+                <ArrowLeft />
+                <span className="hidden md:inline">
+                  {piso !== null ? "Volver a pisos" : "Volver a torres"}
+                </span>
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              aria-label="Revisar fiados"
+              onClick={() => {
+                setAviso(null);
+                setErrorAccion(null);
+                setHoja({ tipo: "deudas" });
+              }}
+            >
+              <ClipboardList />
+              <span className="hidden sm:inline">Revisar fiados</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {nivelActual.error && (
@@ -548,7 +554,7 @@ export default function ClientesPage() {
           )}
           <div className="flex min-h-[24rem] items-center justify-center rounded-field border border-line/60 bg-app/40 p-4">
             {nivelActual.isPending ? (
-              <div className="grid w-full max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid w-fit max-w-full grid-cols-[minmax(0,15rem)] gap-5 sm:grid-cols-[repeat(2,minmax(0,15rem))] lg:grid-cols-[repeat(3,minmax(0,15rem))]">
                 {[0, 1, 2].map((indice) => (
                   <div
                     key={indice}
@@ -557,7 +563,7 @@ export default function ClientesPage() {
                 ))}
               </div>
             ) : items.length ? (
-              <div className="grid w-full max-w-4xl grid-cols-1 gap-5 justify-items-center sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid w-fit max-w-full grid-cols-[minmax(0,15rem)] gap-5 justify-items-center sm:grid-cols-[repeat(2,minmax(0,15rem))] lg:grid-cols-[repeat(3,minmax(0,15rem))]">
                 {items.map((datos) => (
                   <Cuadro key={datos.clave} datos={datos} />
                 ))}
