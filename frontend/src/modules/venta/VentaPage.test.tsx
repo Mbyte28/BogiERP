@@ -217,6 +217,8 @@ describe("VentaPage", () => {
     simularApi();
     renderizar();
 
+    expect(screen.queryByText("Registrar venta")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Elige los productos/)).not.toBeInTheDocument();
     expect(await screen.findAllByText("Leche entera")).not.toHaveLength(0);
     expect(screen.getAllByText("Pollo fresco").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Más vendido").length).toBeGreaterThan(0);
@@ -247,6 +249,25 @@ describe("VentaPage", () => {
     expect(cuerpo.metodoPago).toBe("EFECTIVO");
     expect(cuerpo.efectivoRecibido).toBe(20);
     expect(cuerpo.total).toBeUndefined();
+  });
+
+  it("impide finalizar si el efectivo recibido no cubre el total", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Agregar Leche entera" }));
+    const finalizar = screen.getByRole("button", { name: "Finalizar venta" });
+    fireEvent.change(screen.getByLabelText("Recibido"), { target: { value: "5" } });
+
+    expect(finalizar).toBeDisabled();
+    fireEvent.click(finalizar);
+    expect(
+      peticiones.mock.calls.some(([url, init]) => url.includes("/ventas") && init?.method === "POST"),
+    ).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("Recibido"), { target: { value: "6" } });
+    expect(finalizar).toBeEnabled();
   });
 
   it("refresca catálogo y caja si el producto fue borrado desde otro dispositivo", async () => {

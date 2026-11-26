@@ -212,15 +212,6 @@ export default function VentaPage() {
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
-      <div>
-        <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">
-          Registrar venta
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Elige los productos y cobra en efectivo, por transferencia o ambos.
-        </p>
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <Card className="min-w-0">
           <CardHeader>

@@ -15,23 +15,22 @@ export function ElegirMedioSheet({ abierto, total, onElegir, onCerrar }: ElegirM
   return (
     <Sheet open={abierto} onOpenChange={(estado) => !estado && onCerrar()}>
       <SheetContent
-        side="bottom"
+        side="center"
         title="Yape o Plin"
-        className="sm:inset-y-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:h-auto sm:w-[min(100%,420px)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="w-[min(92vw,360px)] rounded-3xl"
       >
         <div className="text-center">
-          <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-            <Wallet />
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50 text-primary-600">
+            <Wallet size={22} />
           </span>
-          <h3 className="mt-4 text-lg font-bold text-ink">¿Con qué billetera pagaron?</h3>
+          <h3 className="mt-3 text-base font-bold text-ink">¿Con qué billetera pagaron?</h3>
           <p className="mt-1 text-sm text-ink-soft">Total a transferir: {dinero(total)}</p>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        <div className="mt-5 grid grid-cols-2 gap-3">
           {(["YAPE", "PLIN"] as const).map((medio) => (
             <Button
               key={medio}
               type="button"
-              size="lg"
               variant={medio === "YAPE" ? "default" : "secondary"}
               onClick={() => onElegir(medio)}
             >

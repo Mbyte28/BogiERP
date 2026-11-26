@@ -64,6 +64,11 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  button:not(:disabled),
+  a[href] {
+    cursor: pointer;
+  }
+
   ::selection {
     background-color: var(--color-primary-50);
     color: var(--color-primary-600);
