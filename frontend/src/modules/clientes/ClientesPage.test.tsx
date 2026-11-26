@@ -202,9 +202,17 @@ async function navegarAlDepartamento() {
   return screen.findByRole("button", { name: "Ver envíos de Torre 1 Departamento 101" });
 }
 
-async function pagarConEfectivoExacto(panel: HTMLElement) {
-  fireEvent.click(await within(panel).findByRole("button", { name: "Pagar envío" }));
+async function abrirModalPago(panel: HTMLElement) {
+  fireEvent.click(await within(panel).findByRole("button", { name: "Marcar como pagado" }));
   const pago = await screen.findByRole("dialog", { name: "Pagar envío" });
+  expect(within(pago).getByRole("button", { name: "Efectivo" })).toBeInTheDocument();
+  expect(within(pago).getByRole("button", { name: "Transferencia" })).toBeInTheDocument();
+  expect(within(pago).getByRole("button", { name: "Ambos" })).toBeInTheDocument();
+  return pago;
+}
+
+async function pagarConEfectivoExacto(panel: HTMLElement) {
+  const pago = await abrirModalPago(panel);
   fireEvent.click(within(pago).getByRole("button", { name: "Exacto" }));
   fireEvent.click(within(pago).getByRole("button", { name: "Confirmar pago" }));
 }
@@ -281,7 +289,14 @@ describe("ClientesPage", () => {
     expect(within(detalle).queryByRole("button", { name: "Registrar fiado" })).not.toBeInTheDocument();
     expect(within(detalle).queryByRole("button", { name: "Registrar envío" })).not.toBeInTheDocument();
 
-    await pagarConEfectivoExacto(detalle);
+    const pago = await abrirModalPago(detalle);
+    expect(
+      peticiones.mock.calls.some(([url, init]) =>
+        url.includes("/fiados/1/pagar") && init?.method === "PATCH",
+      ),
+    ).toBe(false);
+    fireEvent.click(within(pago).getByRole("button", { name: "Exacto" }));
+    fireEvent.click(within(pago).getByRole("button", { name: "Confirmar pago" }));
 
     await waitFor(() =>
       expect(
@@ -309,7 +324,7 @@ describe("ClientesPage", () => {
 
     fireEvent.click(await navegarAlDepartamento());
     const detalle = await screen.findByRole("dialog", { name: "Torre 1 Departamento 101" });
-    fireEvent.click(await within(detalle).findByRole("button", { name: "Pagar envío" }));
+    fireEvent.click(await within(detalle).findByRole("button", { name: "Marcar como pagado" }));
     const pago = await screen.findByRole("dialog", { name: "Pagar envío" });
     fireEvent.click(within(pago).getByRole("button", { name: "Transferencia" }));
     fireEvent.click(within(pago).getByRole("button", { name: "Confirmar pago" }));
@@ -340,7 +355,7 @@ describe("ClientesPage", () => {
 
     fireEvent.click(await navegarAlDepartamento());
     const detalle = await screen.findByRole("dialog", { name: "Torre 1 Departamento 101" });
-    fireEvent.click(await within(detalle).findByRole("button", { name: "Pagar envío" }));
+    fireEvent.click(await within(detalle).findByRole("button", { name: "Marcar como pagado" }));
     const pago = await screen.findByRole("dialog", { name: "Pagar envío" });
     fireEvent.click(within(pago).getByRole("button", { name: "Ambos" }));
     fireEvent.change(within(pago).getByLabelText("Efectivo"), { target: { value: "4" } });

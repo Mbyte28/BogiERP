@@ -123,7 +123,7 @@ function FilaEnvio({
         <span className="text-sm font-bold text-ink">{dinero(envio.subtotal)}</span>
         {envio.estado === "PENDIENTE" && (
           <Button type="button" size="sm" variant="secondary" disabled={pagando} onClick={onPagar}>
-            {pagando ? "Pagando…" : "Pagar envío"}
+            {pagando ? "Pagando…" : "Marcar como pagado"}
           </Button>
         )}
       </div>
