@@ -235,9 +235,9 @@ export function ProductosPanel() {
         ) : items.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[840px] table-fixed border-collapse text-center text-sm">
+              <table className="w-full min-w-[808px] table-fixed border-collapse text-center text-sm">
                 <colgroup>
-                  <col style={{ width: "16rem" }} />
+                  <col style={{ width: "14.5rem" }} />
                   <col style={{ width: "7rem" }} />
                   <col style={{ width: "6rem" }} />
                   <col style={{ width: "6rem" }} />
@@ -246,7 +246,7 @@ export function ProductosPanel() {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
-                    <th className="py-3 pl-3 pr-3 text-left font-semibold">Producto</th>
+                    <th className="py-3 pl-3 pr-2 text-left font-semibold">Producto</th>
                     <th className="px-3 py-3 font-semibold">Categoría</th>
                     <th className="px-3 py-3 font-semibold">Stock</th>
                     <th className="px-3 py-3 font-semibold">Precio</th>
@@ -257,7 +257,7 @@ export function ProductosPanel() {
                 <tbody className="divide-y divide-line/70">
                   {items.map((producto) => (
                     <tr key={producto.id}>
-                      <td className="py-3 pl-3 pr-3">
+                      <td className="py-3 pl-3 pr-2">
                         <div className="flex items-center justify-start gap-3 text-left">
                           <Miniatura producto={producto} />
                           <div className="min-w-0 flex-1 text-left">

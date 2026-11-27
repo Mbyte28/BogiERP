@@ -260,12 +260,13 @@ describe("InventarioPage", () => {
     await screen.findAllByText("Leche entera");
     const tabla = screen.getByRole("table");
     const columnaProducto = tabla.querySelector("colgroup col");
-    expect(columnaProducto).toHaveStyle({ width: "256px" });
+    expect(columnaProducto).toHaveStyle({ width: "232px" });
     expect(within(tabla).getByRole("columnheader", { name: "Producto" })).toHaveClass(
       "text-left",
     );
 
     const primeraCelda = tabla.querySelector("tbody tr td");
+    expect(primeraCelda).toHaveClass("pr-2");
     expect(primeraCelda?.firstElementChild).toHaveClass("justify-start", "text-left");
 
     const nombres = within(tabla).getAllByText("Leche entera");
