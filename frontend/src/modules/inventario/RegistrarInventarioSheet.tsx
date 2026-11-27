@@ -145,7 +145,7 @@ export function RegistrarInventarioSheet({
 
         <form onSubmit={alEnviar} className="shrink-0 space-y-3 border-t border-line pt-4">
           <div className="max-h-[34dvh] min-h-16 overflow-y-auto pr-1">
-            {lineas.length ? (
+            {lineas.length > 0 && (
               <ul className="space-y-3">
                 {lineas.map((linea) => (
                   <li
@@ -208,10 +208,6 @@ export function RegistrarInventarioSheet({
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-soft">
-                Selecciona productos del catálogo para armar este registro.
-              </p>
             )}
           </div>
 

@@ -171,22 +171,69 @@ describe("InventarioPage", () => {
     expect(screen.getAllByText(/VENCIMIENTO/).length).toBeGreaterThan(0);
   });
 
-  it("filtra por búsqueda y categoría enviando los parámetros al backend", async () => {
+  it("busca en todas las categorías y al elegir categoría limpia la búsqueda", async () => {
     const peticiones = simularApi();
     renderizar();
 
     await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Carnes" }));
     fireEvent.change(screen.getByLabelText("Buscar productos"), {
       target: { value: "leche" },
     });
+
+    await waitFor(() => {
+      expect(
+        peticiones.mock.calls.some(([url]) => url.includes("/productos?q=leche&")),
+      ).toBe(true);
+    });
+    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    fireEvent.change(screen.getByLabelText("Buscar productos"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Carnes" }));
 
     await waitFor(() => {
-      const llamada = peticiones.mock.calls.find(([url]) =>
-        url.includes("/productos?q=leche&categoriaId=3"),
-      );
-      expect(llamada).toBeDefined();
+      expect(
+        peticiones.mock.calls.some(([url]) => url.includes("/productos?categoriaId=3")),
+      ).toBe(true);
     });
+    expect(screen.getByLabelText("Buscar productos")).toHaveValue("");
+  });
+
+  it("mantiene la tabla visible mientras se actualiza la búsqueda", async () => {
+    const resolvers: Array<(valor: ProductoPage) => void> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: string | URL | Request, init?: RequestInit) => {
+        const url = String(entrada);
+        const metodo = init?.method ?? "GET";
+        if (url.includes("/categorias")) return respuesta(categorias);
+        if (url.includes("/productos") && metodo === "GET") {
+          if (url.includes("q=leche")) {
+            return new Promise<ProductoPage>((resolverPromesa) => {
+              resolvers.push(resolverPromesa);
+            });
+          }
+          return respuesta(pagina);
+        }
+        if (url.includes("/mermas")) return respuesta(mermas);
+        return respuesta(null, 404);
+      }),
+    );
+
+    renderizar();
+    await screen.findAllByText("Leche entera");
+
+    fireEvent.change(screen.getByLabelText("Buscar productos"), {
+      target: { value: "leche" },
+    });
+
+    expect(await screen.findByText("Actualizando productos…")).toBeInTheDocument();
+    expect(screen.getAllByText("Leche entera").length).toBeGreaterThan(0);
+
+    resolvers[0]?.(pagina);
   });
 
   it("no permite ajustar stock ni cambiar costos desde la tabla de productos", async () => {
@@ -313,6 +360,13 @@ describe("InventarioPage", () => {
     expect(
       within(dialogo).queryByRole("heading", { level: 3, name: "Registrar inventario" }),
     ).not.toBeInTheDocument();
+    expect(
+      within(dialogo).queryByText(/Selecciona productos del catálogo/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Categorías, productos, stock, costos/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Inventario" })).not.toBeInTheDocument();
   });
 
   it("muestra la imagen actual y obliga a eliminarla antes de subir otra", async () => {

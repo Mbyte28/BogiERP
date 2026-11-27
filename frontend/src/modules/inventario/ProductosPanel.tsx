@@ -1,11 +1,12 @@
 import { useRef, useState, type ChangeEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Image as ImageIcon,
   ImagePlus,
+  LoaderCircle,
   Pencil,
   Plus,
   Search,
@@ -57,6 +58,7 @@ export function ProductosPanel() {
         page: pagina,
         size: 25,
       }),
+    placeholderData: keepPreviousData,
     refetchInterval: REFRESCO_RAPIDO,
   });
 
@@ -97,11 +99,13 @@ export function ProductosPanel() {
 
   function alBuscar(valor: string) {
     setBusqueda(valor);
+    if (valor.trim()) setCategoriaId(null);
     setPagina(0);
   }
 
   function alFiltrarCategoria(id: number | null) {
     setCategoriaId(id);
+    setBusqueda("");
     setPagina(0);
   }
 
@@ -212,12 +216,26 @@ export function ProductosPanel() {
           </p>
         )}
 
+        {productos.isPending && <p role="status" className="sr-only">Cargando productos…</p>}
+        {productos.isPlaceholderData && (
+          <p role="status" className="sr-only">Actualizando productos…</p>
+        )}
+
         {productos.isPending ? (
-          <p className="py-8 text-center text-sm text-ink-soft">Cargando productos…</p>
+          <div className="min-h-[22rem]" aria-hidden="true">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }, (_, indice) => (
+                <div
+                  key={indice}
+                  className="h-28 animate-pulse rounded-field border border-line bg-app"
+                />
+              ))}
+            </div>
+          </div>
         ) : items.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[760px] border-collapse text-center text-sm">
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
                     <th className="py-3 pr-3 font-semibold">Producto</th>
@@ -225,14 +243,14 @@ export function ProductosPanel() {
                     <th className="px-3 py-3 font-semibold">Stock</th>
                     <th className="px-3 py-3 font-semibold">Precio</th>
                     <th className="px-3 py-3 font-semibold">Alertas</th>
-                    <th className="py-3 pl-3 text-right font-semibold">Acciones</th>
+                    <th className="py-3 pl-3 font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/70">
                   {items.map((producto) => (
                     <tr key={producto.id}>
                       <td className="py-3 pr-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center gap-3 text-center">
                           <Miniatura producto={producto} />
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-ink">{producto.nombre}</p>
@@ -246,7 +264,9 @@ export function ProductosPanel() {
                       </td>
                       <td className="px-3 py-3 text-ink">{dinero(producto.precioVenta)}</td>
                       <td className="px-3 py-3">
-                        <Alertas producto={producto} />
+                        <div className="flex flex-wrap justify-center gap-1">
+                          <Alertas producto={producto} />
+                        </div>
                       </td>
                       <td className="py-3 pl-3">
                         <Acciones
@@ -305,9 +325,18 @@ export function ProductosPanel() {
             </ul>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-              <p className="text-sm text-ink-soft">
-                {total} {total === 1 ? "producto" : "productos"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-ink-soft">
+                  {total} {total === 1 ? "producto" : "productos"}
+                </p>
+                {productos.isPlaceholderData && (
+                  <LoaderCircle
+                    size={14}
+                    aria-hidden="true"
+                    className="animate-spin text-primary-600"
+                  />
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -583,7 +612,7 @@ function Acciones({
 }) {
   const nombre = producto.nombre;
   return (
-    <div className="flex flex-wrap justify-end gap-2">
+    <div className="flex flex-wrap justify-center gap-2">
       <Button
         type="button"
         variant="ghost"
