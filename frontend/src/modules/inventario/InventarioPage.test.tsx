@@ -261,6 +261,12 @@ describe("InventarioPage", () => {
     const tabla = screen.getByRole("table");
     const columnaProducto = tabla.querySelector("colgroup col");
     expect(columnaProducto).toHaveStyle({ width: "256px" });
+    expect(within(tabla).getByRole("columnheader", { name: "Producto" })).toHaveClass(
+      "text-left",
+    );
+
+    const primeraCelda = tabla.querySelector("tbody tr td");
+    expect(primeraCelda?.firstElementChild).toHaveClass("justify-start", "text-left");
 
     const nombres = within(tabla).getAllByText("Leche entera");
     nombres.forEach((nombre) => {

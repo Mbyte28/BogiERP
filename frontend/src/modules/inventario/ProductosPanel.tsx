@@ -246,7 +246,7 @@ export function ProductosPanel() {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
-                    <th className="py-3 pr-3 font-semibold">Producto</th>
+                    <th className="py-3 pl-3 pr-3 text-left font-semibold">Producto</th>
                     <th className="px-3 py-3 font-semibold">Categoría</th>
                     <th className="px-3 py-3 font-semibold">Stock</th>
                     <th className="px-3 py-3 font-semibold">Precio</th>
@@ -257,10 +257,10 @@ export function ProductosPanel() {
                 <tbody className="divide-y divide-line/70">
                   {items.map((producto) => (
                     <tr key={producto.id}>
-                      <td className="py-3 pr-3">
-                        <div className="flex items-center justify-center gap-3 text-center">
+                      <td className="py-3 pl-3 pr-3">
+                        <div className="flex items-center justify-start gap-3 text-left">
                           <Miniatura producto={producto} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1 text-left">
                             <p className="truncate font-semibold text-ink" title={producto.nombre}>
                               {producto.nombre}
                             </p>
