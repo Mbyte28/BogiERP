@@ -235,7 +235,15 @@ export function ProductosPanel() {
         ) : items.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[760px] border-collapse text-center text-sm">
+              <table className="w-full min-w-[840px] table-fixed border-collapse text-center text-sm">
+                <colgroup>
+                  <col style={{ width: "16rem" }} />
+                  <col style={{ width: "7rem" }} />
+                  <col style={{ width: "6rem" }} />
+                  <col style={{ width: "6rem" }} />
+                  <col style={{ width: "7rem" }} />
+                  <col style={{ width: "10rem" }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
                     <th className="py-3 pr-3 font-semibold">Producto</th>
@@ -253,7 +261,9 @@ export function ProductosPanel() {
                         <div className="flex items-center justify-center gap-3 text-center">
                           <Miniatura producto={producto} />
                           <div className="min-w-0">
-                            <p className="truncate font-semibold text-ink">{producto.nombre}</p>
+                            <p className="truncate font-semibold text-ink" title={producto.nombre}>
+                              {producto.nombre}
+                            </p>
                             <Badge variant="info">{producto.tipoVenta === "KILO" ? "Kilo" : "Unidad"}</Badge>
                           </div>
                         </div>

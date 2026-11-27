@@ -253,6 +253,22 @@ describe("InventarioPage", () => {
     expect(screen.queryByRole("columnheader", { name: "Costo" })).not.toBeInTheDocument();
   });
 
+  it("mantiene fijo el ancho de la columna producto y recorta los nombres largos", async () => {
+    simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    const tabla = screen.getByRole("table");
+    const columnaProducto = tabla.querySelector("colgroup col");
+    expect(columnaProducto).toHaveStyle({ width: "256px" });
+
+    const nombres = within(tabla).getAllByText("Leche entera");
+    nombres.forEach((nombre) => {
+      expect(nombre).toHaveClass("truncate");
+      expect(nombre).toHaveAttribute("title", "Leche entera");
+    });
+  });
+
   it("registra varios productos del catálogo con costo opcional y permite quitar líneas", async () => {
     const peticiones = simularApi();
     renderizar();
