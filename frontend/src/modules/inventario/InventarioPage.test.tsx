@@ -17,7 +17,7 @@ const productos: Producto[] = [
     categoriaId: 4,
     categoriaNombre: "Lácteos",
     categoriaIcono: "milk",
-    imagen: null,
+    imagen: "leche.jpg",
     tipoVenta: "UNIDAD",
     precioVenta: "5.50",
     costoActual: null,
@@ -133,6 +133,9 @@ function simularApi(peticiones = vi.fn()) {
 
       if (url.includes("/productos/ingresos") && metodo === "POST") {
         return respuesta(productos);
+      }
+      if (url.includes("/productos/") && url.endsWith("/imagen") && metodo === "DELETE") {
+        return respuesta({ ...productos[0], imagen: null });
       }
       if (url.includes("/productos") && metodo === "POST") {
         return respuesta({ ...productos[0], id: 3, nombre: "Nueva gaseosa" }, 201);
@@ -296,6 +299,82 @@ describe("InventarioPage", () => {
     expect(
       peticiones.mock.calls.some(([url]) => url.includes("/productos/ingresos")),
     ).toBe(false);
+  });
+
+  it("no muestra la descripción dentro del modal de registrar inventario", async () => {
+    simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Registrar inventario" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar inventario" });
+
+    expect(within(dialogo).queryByText(/Elige uno o varios productos/)).not.toBeInTheDocument();
+    expect(
+      within(dialogo).queryByRole("heading", { level: 3, name: "Registrar inventario" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("muestra la imagen actual y obliga a eliminarla antes de subir otra", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getAllByRole("button", { name: "Ver imagen de Leche entera" })[0]);
+    const dialogo = await screen.findByRole("dialog", { name: "Imagen de Leche entera" });
+
+    expect(within(dialogo).getByRole("img", { name: "Imagen de Leche entera" })).toHaveAttribute(
+      "src",
+      "/uploads/leche.jpg",
+    );
+    expect(
+      within(dialogo).queryByRole("button", { name: "Agregar imagen" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Eliminar imagen" }));
+    expect(await within(dialogo).findByText("Este producto no tiene imagen.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        peticiones.mock.calls.some(
+          ([url, init]) => url.includes("/productos/1/imagen") && init?.method === "DELETE",
+        ),
+      ).toBe(true);
+    });
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Agregar imagen" }));
+    fireEvent.change(screen.getByLabelText("Seleccionar imagen del producto"), {
+      target: { files: [new File(["x"], "nueva.png", { type: "image/png" })] },
+    });
+    await waitFor(() => {
+      expect(
+        peticiones.mock.calls.some(
+          ([url, init]) => url.includes("/productos/1/imagen") && init?.method === "POST",
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("abre el selector de archivos directamente si el producto no tiene imagen", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    const entrada = screen.getByLabelText("Seleccionar imagen del producto") as HTMLInputElement;
+    const abrir = vi.spyOn(entrada, "click").mockImplementation(() => {});
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Agregar imagen de Pollo fresco" })[0]);
+    expect(abrir).toHaveBeenCalled();
+
+    fireEvent.change(entrada, {
+      target: { files: [new File(["x"], "pollo.png", { type: "image/png" })] },
+    });
+    await waitFor(() => {
+      expect(
+        peticiones.mock.calls.some(
+          ([url, init]) => url.includes("/productos/2/imagen") && init?.method === "POST",
+        ),
+      ).toBe(true);
+    });
   });
 
   it("crea un producto con los datos del formulario", async () => {

@@ -357,7 +357,7 @@ class InventarioResourceTest {
     }
 
     @Test
-    void subirImagenValidaFormatoYPermiteDescargarla() throws Exception {
+    void imagenRequiereEliminarLaAnteriorYSePuedeBorrar() throws Exception {
         String token = AuthResourceTest.iniciarSesion("admin", "admin123");
         long id = crearProducto(token, "Con imagen " + sufijo(), "UNIDAD", "9.00", null, "4", null);
 
@@ -374,10 +374,32 @@ class InventarioResourceTest {
 
         given()
                 .cookie(COOKIE, token)
+                .multiPart("imagen", "otra.png", png(), "image/png")
+                .post("/productos/{id}/imagen", id)
+                .then()
+                .statusCode(400)
+                .body("message", containsString("Elimina la imagen actual"));
+
+        given()
+                .cookie(COOKIE, token)
                 .get("/uploads/{nombre}", nombreArchivo)
                 .then()
                 .statusCode(200)
                 .header("Content-Type", containsString("image/png"));
+
+        given()
+                .cookie(COOKIE, token)
+                .delete("/productos/{id}/imagen", id)
+                .then()
+                .statusCode(200)
+                .body("imagen", equalTo(null));
+
+        given()
+                .cookie(COOKIE, token)
+                .delete("/productos/{id}/imagen", id)
+                .then()
+                .statusCode(400)
+                .body("message", containsString("no tiene una imagen"));
 
         given()
                 .cookie(COOKIE, token)

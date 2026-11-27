@@ -11,6 +11,7 @@ import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -77,5 +78,11 @@ public class ProductoResource {
             @PathParam("id") Long id,
             @RestForm("imagen") FileUpload imagen) {
         return servicio.guardarImagen(id, imagen);
+    }
+
+    @DELETE
+    @Path("/{id}/imagen")
+    public ProductoResponse eliminarImagen(@PathParam("id") Long id) {
+        return servicio.eliminarImagen(id);
     }
 }

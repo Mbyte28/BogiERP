@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Image as ImageIcon,
   ImagePlus,
   Pencil,
   Plus,
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { ApiError } from "@/lib/api";
 import {
   cantidad,
   dinero,
@@ -36,7 +38,10 @@ export function ProductosPanel() {
   const [formulario, setFormulario] = useState<Producto | "nuevo" | null>(null);
   const [mermaProducto, setMermaProducto] = useState<Producto | null>(null);
   const [registroAbierto, setRegistroAbierto] = useState(false);
+  const [productoImagen, setProductoImagen] = useState<Producto | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const entradaImagen = useRef<HTMLInputElement>(null);
+  const idImagenPendiente = useRef<number | null>(null);
 
   const categorias = useQuery({
     queryKey: ["categorias"],
@@ -60,9 +65,30 @@ export function ProductosPanel() {
       inventarioApi.subirImagen(id, archivo),
     onSuccess: async () => {
       await cliente.invalidateQueries({ queryKey: ["productos"] });
+      setProductoImagen(null);
       setMensaje(null);
     },
-    onError: (fallo: Error) => setMensaje(fallo.message),
+    onError: async (fallo: Error) => {
+      setMensaje(fallo.message);
+      if (fallo instanceof ApiError && (fallo.status === 404 || fallo.status === 409)) {
+        await cliente.invalidateQueries({ queryKey: ["productos"] });
+      }
+    },
+  });
+
+  const borrarImagen = useMutation({
+    mutationFn: (id: number) => inventarioApi.eliminarImagen(id),
+    onSuccess: async (actualizado) => {
+      setProductoImagen(actualizado);
+      setMensaje(null);
+      await cliente.invalidateQueries({ queryKey: ["productos"] });
+    },
+    onError: async (fallo: Error) => {
+      setMensaje(fallo.message);
+      if (fallo instanceof ApiError && (fallo.status === 404 || fallo.status === 409)) {
+        await cliente.invalidateQueries({ queryKey: ["productos"] });
+      }
+    },
   });
 
   const items = productos.data?.items ?? [];
@@ -77,6 +103,28 @@ export function ProductosPanel() {
   function alFiltrarCategoria(id: number | null) {
     setCategoriaId(id);
     setPagina(0);
+  }
+
+  function abrirSelectorImagen(id: number) {
+    idImagenPendiente.current = id;
+    entradaImagen.current?.click();
+  }
+
+  function alAccionarImagen(producto: Producto) {
+    setMensaje(null);
+    if (producto.imagen) {
+      setProductoImagen(producto);
+    } else {
+      abrirSelectorImagen(producto.id);
+    }
+  }
+
+  function alCambiarImagen(evento: ChangeEvent<HTMLInputElement>) {
+    const archivo = evento.target.files?.[0];
+    const id = idImagenPendiente.current;
+    evento.target.value = "";
+    if (!archivo || id === null) return;
+    void imagen.mutateAsync({ id, archivo });
   }
 
   return (
@@ -205,9 +253,7 @@ export function ProductosPanel() {
                           producto={producto}
                           onMerma={() => setMermaProducto(producto)}
                           onEditar={() => setFormulario(producto)}
-                          onImagen={(archivo) =>
-                            void imagen.mutateAsync({ id: producto.id, archivo })
-                          }
+                          onImagen={() => alAccionarImagen(producto)}
                         />
                       </td>
                     </tr>
@@ -251,9 +297,7 @@ export function ProductosPanel() {
                       producto={producto}
                       onMerma={() => setMermaProducto(producto)}
                       onEditar={() => setFormulario(producto)}
-                      onImagen={(archivo) =>
-                        void imagen.mutateAsync({ id: producto.id, archivo })
-                      }
+                      onImagen={() => alAccionarImagen(producto)}
                     />
                   </div>
                 </li>
@@ -341,7 +385,114 @@ export function ProductosPanel() {
         abierto={registroAbierto}
         onCerrar={() => setRegistroAbierto(false)}
       />
+
+      <Sheet
+        open={productoImagen !== null}
+        onOpenChange={(estado) => {
+          if (!estado) {
+            setProductoImagen(null);
+            setMensaje(null);
+          }
+        }}
+      >
+        <SheetContent
+          side="center"
+          title={productoImagen ? `Imagen de ${productoImagen.nombre}` : "Imagen del producto"}
+          className="w-[min(96vw,520px)] gap-4"
+        >
+          {productoImagen && (
+            <>
+              <div className="pr-12">
+                <h3 className="text-lg font-bold text-ink">
+                  Imagen de {productoImagen.nombre}
+                </h3>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {productoImagen.imagen
+                    ? "Elimina la imagen actual para poder subir otra."
+                    : "Este producto no tiene imagen registrada."}
+                </p>
+              </div>
+
+              {productoImagen.imagen ? (
+                <ImagenGrande nombre={productoImagen.nombre} archivo={productoImagen.imagen} />
+              ) : (
+                <div className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-app p-5 text-center">
+                  <ImageIcon size={32} className="text-ink-soft" />
+                  <p className="text-sm text-ink-soft">Este producto no tiene imagen.</p>
+                </div>
+              )}
+
+              {mensaje && (
+                <p role="alert" className="rounded-field bg-danger/15 px-4 py-3 text-sm text-[#c75f53]">
+                  {mensaje}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12"
+                  onClick={() => {
+                    setProductoImagen(null);
+                    setMensaje(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                {productoImagen.imagen ? (
+                  <Button
+                    type="button"
+                    className="h-12"
+                    disabled={borrarImagen.isPending}
+                    onClick={() => void borrarImagen.mutateAsync(productoImagen.id)}
+                  >
+                    {borrarImagen.isPending ? "Eliminando…" : "Eliminar imagen"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    className="h-12"
+                    disabled={imagen.isPending}
+                    onClick={() => abrirSelectorImagen(productoImagen.id)}
+                  >
+                    Agregar imagen
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <input
+        ref={entradaImagen}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label="Seleccionar imagen del producto"
+        className="sr-only"
+        onChange={alCambiarImagen}
+      />
     </Card>
+  );
+}
+
+function ImagenGrande({ nombre, archivo }: { nombre: string; archivo: string }) {
+  const [fallo, setFallo] = useState(false);
+  const fuente = urlImagen(archivo);
+  return (
+    <div className="flex max-h-[45dvh] min-h-40 items-center justify-center overflow-hidden rounded-xl bg-app">
+      {fuente && !fallo ? (
+        <img
+          src={fuente}
+          alt={`Imagen de ${nombre}`}
+          className="max-h-[45dvh] w-full object-contain"
+          onError={() => setFallo(true)}
+        />
+      ) : (
+        <p className="p-5 text-sm text-ink-soft">No se pudo mostrar la imagen.</p>
+      )}
+    </div>
   );
 }
 
@@ -428,7 +579,7 @@ function Acciones({
   producto: Producto;
   onMerma: () => void;
   onEditar: () => void;
-  onImagen: (archivo: File) => void;
+  onImagen: () => void;
 }) {
   const nombre = producto.nombre;
   return (
@@ -451,23 +602,15 @@ function Acciones({
       >
         <Pencil />
       </Button>
-      <label
-        className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-ink-soft outline-none transition-colors hover:bg-app hover:text-ink focus-within:ring-2 focus-within:ring-primary-500/40"
-        aria-label={`Cambiar imagen de ${nombre}`}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={producto.imagen ? `Ver imagen de ${nombre}` : `Agregar imagen de ${nombre}`}
+        onClick={onImagen}
       >
-        <ImagePlus />
-        <span className="sr-only">Cambiar imagen de {nombre}</span>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="sr-only"
-          onChange={(evento) => {
-            const archivo = evento.target.files?.[0];
-            if (archivo) onImagen(archivo);
-            evento.target.value = "";
-          }}
-        />
-      </label>
+        {producto.imagen ? <ImageIcon /> : <ImagePlus />}
+      </Button>
     </div>
   );
 }

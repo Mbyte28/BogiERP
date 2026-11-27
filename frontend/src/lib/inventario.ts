@@ -146,6 +146,7 @@ export const inventarioApi = {
     datos.append("imagen", archivo);
     return api.upload<Producto>(`/productos/${id}/imagen`, datos);
   },
+  eliminarImagen: (id: number) => api.delete<Producto>(`/productos/${id}/imagen`),
 
   mermas: (mes: string) => api.get<Merma[]>(`/mermas${consulta({ mes })}`),
   crearMerma: (datos: DatosMerma) => api.post<Merma>("/mermas", datos),

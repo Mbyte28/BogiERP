@@ -224,7 +224,8 @@ requieren autenticación y el módulo `INVENTARIO`.
 | `GET` | `/api/productos?page=&size=&q=&categoriaId=` | Productos paginados y filtrados |
 | `POST/PUT` | `/api/productos` y `/api/productos/{id}` | Crear y editar producto |
 | `POST` | `/api/productos/ingresos` | Registrar uno o varios ingresos de stock; el costo es opcional |
-| `POST` | `/api/productos/{id}/imagen` | Subir imagen (multipart, JPG/PNG/WebP ≤ 5 MB) |
+| `POST` | `/api/productos/{id}/imagen` | Subir imagen (multipart, JPG/PNG/WebP ≤ 5 MB; solo si no hay imagen vigente) |
+| `DELETE` | `/api/productos/{id}/imagen` | Eliminar la imagen actual del producto |
 | `GET` | `/api/uploads/{nombre}` | Descargar imagen en desarrollo (en producción la sirve Nginx) |
 | `GET/POST` | `/api/mermas?mes=2026-11` | Listar mermas del mes y registrar una |
 
@@ -241,7 +242,9 @@ Reglas que aplica la base de datos y el backend:
 - Las mermas descuentan stock y congelan el costo del momento en
   `fn_merma_snapshot`, para no alterar el historial.
 - Las imágenes se guardan con un nombre único y se redimensionan a un máximo
-  de 800 px (JPG/PNG); WebP se guarda sin redimensionar.
+  de 800 px (JPG/PNG); WebP se guarda sin redimensionar. Para cambiar una
+  imagen hay que eliminar la actual primero: el botón de imagen del producto
+  abre un modal con la imagen vigente y la opción de quitarla.
 
 La interfaz ofrece filtros por búsqueda y categoría, tabla en escritorio y
 tarjetas en móvil, acciones de imagen/merma, alertas de productos sin costo o

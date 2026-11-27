@@ -178,11 +178,22 @@ public class InventarioService {
     @Transactional
     public ProductoResponse guardarImagen(Long id, FileUpload archivo) {
         Producto producto = buscarProducto(id);
-        String anterior = producto.imagen;
-        producto.imagen = imagenes.guardar(archivo);
-        if (anterior != null && !anterior.equals(producto.imagen)) {
-            imagenes.borrar(anterior);
+        if (producto.imagen != null && !producto.imagen.isBlank()) {
+            throw Errores.badRequest("Elimina la imagen actual antes de subir otra");
         }
+        producto.imagen = imagenes.guardar(archivo);
+        return aRespuesta(producto);
+    }
+
+    @Transactional
+    public ProductoResponse eliminarImagen(Long id) {
+        Producto producto = buscarProducto(id);
+        if (producto.imagen == null || producto.imagen.isBlank()) {
+            throw Errores.badRequest("El producto no tiene una imagen para eliminar");
+        }
+        String anterior = producto.imagen;
+        producto.imagen = null;
+        imagenes.borrar(anterior);
         return aRespuesta(producto);
     }
 

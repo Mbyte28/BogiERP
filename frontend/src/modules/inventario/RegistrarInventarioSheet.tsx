@@ -134,14 +134,6 @@ export function RegistrarInventarioSheet({
         title="Registrar inventario"
         className="w-[min(96vw,960px)] max-h-[92dvh] gap-4 overflow-hidden p-4 sm:p-5"
       >
-        <div className="pr-12">
-          <h3 className="text-lg font-bold text-ink">Registrar inventario</h3>
-          <p className="mt-1 text-sm text-ink-soft">
-            Elige uno o varios productos del catálogo e indica cuánto ingresó. El costo es opcional
-            y, si lo indicas, reemplaza el costo vigente del producto.
-          </p>
-        </div>
-
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           <CatalogoProductos
             onSeleccionar={alSeleccionar}
