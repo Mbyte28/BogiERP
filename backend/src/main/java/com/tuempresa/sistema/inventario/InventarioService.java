@@ -2,8 +2,6 @@ package com.tuempresa.sistema.inventario;
 
 import com.tuempresa.sistema.common.error.Errores;
 import com.tuempresa.sistema.common.security.UsuarioActual;
-import com.tuempresa.sistema.inventario.dto.AjustarStockRequest;
-import com.tuempresa.sistema.inventario.dto.ActualizarCostoRequest;
 import com.tuempresa.sistema.inventario.dto.CategoriaRequest;
 import com.tuempresa.sistema.inventario.dto.CategoriaResponse;
 import com.tuempresa.sistema.inventario.dto.CrearMermaRequest;
@@ -11,6 +9,7 @@ import com.tuempresa.sistema.inventario.dto.MermaResponse;
 import com.tuempresa.sistema.inventario.dto.ProductoPageResponse;
 import com.tuempresa.sistema.inventario.dto.ProductoRequest;
 import com.tuempresa.sistema.inventario.dto.ProductoResponse;
+import com.tuempresa.sistema.inventario.dto.RegistrarInventarioRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -25,9 +24,12 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -145,26 +147,32 @@ public class InventarioService {
     }
 
     @Transactional
-    public ProductoResponse ajustarStock(Long id, AjustarStockRequest solicitud) {
-        Producto producto = buscarProducto(id);
-        BigDecimal cantidad = solicitud.cantidad();
-        if (cantidad.signum() <= 0) {
-            throw Errores.badRequest("La cantidad a ingresar debe ser mayor a cero");
+    public List<ProductoResponse> registrarInventario(RegistrarInventarioRequest solicitud) {
+        Set<Long> productosDelRegistro = new HashSet<>();
+        List<ProductoResponse> actualizados = new ArrayList<>();
+
+        for (RegistrarInventarioRequest.Linea linea : solicitud.items()) {
+            if (!productosDelRegistro.add(linea.productoId())) {
+                throw Errores.badRequest("No repitas productos en el registro de inventario");
+            }
+
+            Producto producto = buscarProducto(linea.productoId());
+            BigDecimal cantidad = linea.cantidad();
+            if (cantidad.signum() <= 0) {
+                throw Errores.badRequest("La cantidad a ingresar debe ser mayor a cero");
+            }
+            validarStock(producto.tipoVenta, cantidad);
+            validarStock(producto.tipoVenta, producto.stock.add(cantidad));
+
+            producto.stock = producto.stock.add(cantidad);
+            if (linea.costo() != null) {
+                producto.costoActual = linea.costo().setScale(2, RoundingMode.HALF_UP);
+            }
+            registrarMovimiento(producto, "INGRESO", cantidad, null);
+            actualizados.add(aRespuesta(producto));
         }
 
-        BigDecimal nuevoStock = producto.stock.add(cantidad);
-        validarStock(producto.tipoVenta, nuevoStock);
-
-        producto.stock = nuevoStock;
-        registrarMovimiento(producto, "INGRESO", cantidad, null);
-        return aRespuesta(producto);
-    }
-
-    @Transactional
-    public ProductoResponse actualizarCosto(Long id, ActualizarCostoRequest solicitud) {
-        Producto producto = buscarProducto(id);
-        producto.costoActual = solicitud.costo() == null ? null : solicitud.costo().setScale(2, RoundingMode.HALF_UP);
-        return aRespuesta(producto);
+        return actualizados;
     }
 
     @Transactional

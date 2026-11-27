@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   ClipboardList,
   ImagePlus,
   Pencil,
@@ -24,7 +23,6 @@ import {
 } from "@/lib/inventario";
 import { REFRESCO_RAPIDO } from "@/lib/queryClient";
 import { CategoriasPanel } from "./CategoriasPanel";
-import { CostoForm } from "./CostoForm";
 import { IconoCategoria } from "./IconoCategoria";
 import { MermaForm } from "./MermaForm";
 import { ProductoForm } from "./ProductoForm";
@@ -36,7 +34,6 @@ export function ProductosPanel() {
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [pagina, setPagina] = useState(0);
   const [formulario, setFormulario] = useState<Producto | "nuevo" | null>(null);
-  const [costoProducto, setCostoProducto] = useState<Producto | null>(null);
   const [mermaProducto, setMermaProducto] = useState<Producto | null>(null);
   const [registroAbierto, setRegistroAbierto] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -88,7 +85,7 @@ export function ProductosPanel() {
         <div>
           <CardTitle>Productos</CardTitle>
           <p className="mt-1 text-sm text-ink-soft">
-            Controla stock, costos e imágenes desde un solo lugar.
+            Controla stock, imágenes y mermas desde un solo lugar.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -179,7 +176,6 @@ export function ProductosPanel() {
                     <th className="px-3 py-3 font-semibold">Categoría</th>
                     <th className="px-3 py-3 font-semibold">Stock</th>
                     <th className="px-3 py-3 font-semibold">Precio</th>
-                    <th className="px-3 py-3 font-semibold">Costo</th>
                     <th className="px-3 py-3 font-semibold">Alertas</th>
                     <th className="py-3 pl-3 text-right font-semibold">Acciones</th>
                   </tr>
@@ -201,14 +197,12 @@ export function ProductosPanel() {
                         {cantidad(producto.stock)} {producto.tipoVenta === "KILO" ? "kg" : "uni"}
                       </td>
                       <td className="px-3 py-3 text-ink">{dinero(producto.precioVenta)}</td>
-                      <td className="px-3 py-3 text-ink">{dinero(producto.costoActual)}</td>
                       <td className="px-3 py-3">
                         <Alertas producto={producto} />
                       </td>
                       <td className="py-3 pl-3">
                         <Acciones
                           producto={producto}
-                          onCosto={() => setCostoProducto(producto)}
                           onMerma={() => setMermaProducto(producto)}
                           onEditar={() => setFormulario(producto)}
                           onImagen={(archivo) =>
@@ -244,10 +238,9 @@ export function ProductosPanel() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-surface p-3 text-center">
+                  <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-surface p-3 text-center">
                     <Dato label="Stock" valor={`${cantidad(producto.stock)} ${producto.tipoVenta === "KILO" ? "kg" : "uni"}`} />
                     <Dato label="Precio" valor={dinero(producto.precioVenta)} />
-                    <Dato label="Costo" valor={dinero(producto.costoActual)} />
                   </div>
                   <p className="mt-2 text-xs text-ink-soft">
                     Vencimiento: {fecha(producto.fechaVencimiento)}
@@ -256,7 +249,6 @@ export function ProductosPanel() {
                   <div className="mt-3">
                     <Acciones
                       producto={producto}
-                      onCosto={() => setCostoProducto(producto)}
                       onMerma={() => setMermaProducto(producto)}
                       onEditar={() => setFormulario(producto)}
                       onImagen={(archivo) =>
@@ -322,23 +314,6 @@ export function ProductosPanel() {
               categorias={categorias.data ?? []}
               onGuardado={() => setFormulario(null)}
               onCancelar={() => setFormulario(null)}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={costoProducto !== null} onOpenChange={(estado) => !estado && setCostoProducto(null)}>
-        <SheetContent
-          side="bottom"
-          title="Costo del producto"
-          className="sm:inset-y-0 sm:bottom-auto sm:left-auto sm:right-0 sm:h-dvh sm:max-h-none sm:w-[min(100%,440px)] sm:rounded-l-3xl sm:rounded-t-none"
-        >
-          {costoProducto && (
-            <CostoForm
-              key={costoProducto.id}
-              producto={costoProducto}
-              onGuardado={() => setCostoProducto(null)}
-              onCancelar={() => setCostoProducto(null)}
             />
           )}
         </SheetContent>
@@ -446,13 +421,11 @@ function Dato({ label, valor }: { label: string; valor: string }) {
 
 function Acciones({
   producto,
-  onCosto,
   onMerma,
   onEditar,
   onImagen,
 }: {
   producto: Producto;
-  onCosto: () => void;
   onMerma: () => void;
   onEditar: () => void;
   onImagen: (archivo: File) => void;
@@ -460,15 +433,6 @@ function Acciones({
   const nombre = producto.nombre;
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Editar costo de ${nombre}`}
-        onClick={onCosto}
-      >
-        <CircleDollarSign />
-      </Button>
       <Button
         type="button"
         variant="ghost"

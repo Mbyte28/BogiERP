@@ -131,11 +131,11 @@ function simularApi(peticiones = vi.fn()) {
       if (url.includes("/categorias")) return respuesta(categorias);
       if (url.includes("/catalogo")) return respuesta(catalogo);
 
+      if (url.includes("/productos/ingresos") && metodo === "POST") {
+        return respuesta(productos);
+      }
       if (url.includes("/productos") && metodo === "POST") {
         return respuesta({ ...productos[0], id: 3, nombre: "Nueva gaseosa" }, 201);
-      }
-      if (url.includes("/productos") && metodo === "PATCH") {
-        return respuesta(productos[0]);
       }
       if (url.includes("/productos")) return respuesta(pagina);
 
@@ -186,7 +186,7 @@ describe("InventarioPage", () => {
     });
   });
 
-  it("no permite ajustar stock manualmente desde la tabla de productos", async () => {
+  it("no permite ajustar stock ni cambiar costos desde la tabla de productos", async () => {
     simularApi();
     renderizar();
 
@@ -197,9 +197,13 @@ describe("InventarioPage", () => {
     expect(
       screen.queryByRole("button", { name: "Agregar stock a Leche entera" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Editar costo de Leche entera" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Costo" })).not.toBeInTheDocument();
   });
 
-  it("registra inventario desde el catálogo de ventas dentro de un modal", async () => {
+  it("registra varios productos del catálogo con costo opcional y permite quitar líneas", async () => {
     const peticiones = simularApi();
     renderizar();
 
@@ -223,19 +227,75 @@ describe("InventarioPage", () => {
     });
 
     fireEvent.click(within(dialogo).getByRole("button", { name: "Seleccionar Leche entera" }));
-    fireEvent.change(within(dialogo).getByLabelText("Cantidad a ingresar"), {
-      target: { value: "5" },
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Seleccionar Pollo fresco" }));
+    expect(within(dialogo).getByText("2 productos en este registro")).toBeInTheDocument();
+
+    fireEvent.change(
+      within(dialogo).getByLabelText("Cantidad a ingresar de Leche entera"),
+      { target: { value: "5" } },
+    );
+    fireEvent.change(within(dialogo).getByLabelText("Costo de Leche entera (opcional)"), {
+      target: { value: "4.5" },
     });
+    fireEvent.change(within(dialogo).getByLabelText("Cantidad a ingresar de Pollo fresco"), {
+      target: { value: "2" },
+    });
+
+    fireEvent.click(
+      within(dialogo).getByRole("button", { name: "Quitar Pollo fresco del registro" }),
+    );
+    expect(
+      within(dialogo).queryByLabelText("Cantidad a ingresar de Pollo fresco"),
+    ).not.toBeInTheDocument();
+    expect(within(dialogo).getByText("1 producto en este registro")).toBeInTheDocument();
+
     fireEvent.click(within(dialogo).getByRole("button", { name: "Registrar inventario" }));
 
     await waitFor(() => {
       const llamada = peticiones.mock.calls.find(
-        ([url, init]) => url.includes("/productos/1/stock") && init?.method === "PATCH",
+        ([url, init]) => url.includes("/productos/ingresos") && init?.method === "POST",
       );
       expect(llamada).toBeDefined();
-      expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({ cantidad: 5 });
+      expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({
+        items: [{ productoId: 1, cantidad: 5, costo: 4.5 }],
+      });
     });
     expect(await within(dialogo).findByText("Inventario registrado.")).toBeInTheDocument();
+  });
+
+  it("no envía el registro si falta la cantidad o el costo es negativo", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Registrar inventario" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar inventario" });
+
+    fireEvent.click(
+      await within(dialogo).findByRole("button", { name: "Seleccionar Leche entera" }),
+    );
+    const enviar = within(dialogo).getByRole("button", { name: "Registrar inventario" });
+    fireEvent.click(enviar);
+    expect(
+      await within(dialogo).findByText("Ingresa una cantidad mayor a cero para Leche entera."),
+    ).toBeInTheDocument();
+    expect(
+      peticiones.mock.calls.some(([url]) => url.includes("/productos/ingresos")),
+    ).toBe(false);
+
+    fireEvent.change(within(dialogo).getByLabelText("Cantidad a ingresar de Leche entera"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Costo de Leche entera (opcional)"), {
+      target: { value: "-1" },
+    });
+    fireEvent.click(enviar);
+    expect(
+      await within(dialogo).findByText("El costo de Leche entera no es válido."),
+    ).toBeInTheDocument();
+    expect(
+      peticiones.mock.calls.some(([url]) => url.includes("/productos/ingresos")),
+    ).toBe(false);
   });
 
   it("crea un producto con los datos del formulario", async () => {
@@ -274,6 +334,34 @@ describe("InventarioPage", () => {
       expect(cuerpo.precioVenta).toBe(7.5);
       expect(cuerpo.stock).toBe(20);
       expect(cuerpo.costoActual).toBeNull();
+    });
+  });
+
+  it("al editar un producto oculta el costo, deja el stock solo lectura y no envía stock ni costo", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar Leche entera" })[0]);
+    const dialogo = await screen.findByRole("dialog", { name: "Producto" });
+
+    expect(within(dialogo).getByLabelText("Stock (unidades)")).toHaveAttribute("readonly");
+    expect(within(dialogo).queryByLabelText("Costo actual (opcional)")).not.toBeInTheDocument();
+
+    fireEvent.change(within(dialogo).getByLabelText("Nombre"), {
+      target: { value: "Leche entera light" },
+    });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      const llamada = peticiones.mock.calls.find(
+        ([url, init]) => url.includes("/productos/1") && init?.method === "PUT",
+      );
+      expect(llamada).toBeDefined();
+      const cuerpo = JSON.parse(String(llamada?.[1]?.body));
+      expect(cuerpo.nombre).toBe("Leche entera light");
+      expect(cuerpo.stock).toBeUndefined();
+      expect(cuerpo.costoActual).toBeUndefined();
     });
   });
 

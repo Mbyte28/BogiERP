@@ -223,8 +223,7 @@ requieren autenticación y el módulo `INVENTARIO`.
 | `PUT/DELETE` | `/api/categorias/{id}` | Renombrar y eliminar categoría |
 | `GET` | `/api/productos?page=&size=&q=&categoriaId=` | Productos paginados y filtrados |
 | `POST/PUT` | `/api/productos` y `/api/productos/{id}` | Crear y editar producto |
-| `PATCH` | `/api/productos/{id}/stock` | Registrar ingreso de stock (solo cantidades positivas) |
-| `PATCH` | `/api/productos/{id}/costo` | Cambiar costo; `null` lo deja sin costo |
+| `POST` | `/api/productos/ingresos` | Registrar uno o varios ingresos de stock; el costo es opcional |
 | `POST` | `/api/productos/{id}/imagen` | Subir imagen (multipart, JPG/PNG/WebP ≤ 5 MB) |
 | `GET` | `/api/uploads/{nombre}` | Descargar imagen en desarrollo (en producción la sirve Nginx) |
 | `GET/POST` | `/api/mermas?mes=2026-11` | Listar mermas del mes y registrar una |
@@ -236,19 +235,24 @@ Reglas que aplica la base de datos y el backend:
 - Todo cambio de stock se registra en `movimiento_stock` (`INGRESO`, `VENTA`,
   `FIADO` o `MERMA`), incluido el stock inicial. El alta manual solo suma;
   las bajas ocurren con mermas, ventas y envíos.
-- Cada cambio de costo se guarda en `producto_costo_historial`.
+- El costo solo se cambia al registrar inventario: si la línea trae `costo`,
+  se guarda como costo unitario vigente; si se omite, el costo actual se
+  conserva. Cada cambio se guarda en `producto_costo_historial`.
 - Las mermas descuentan stock y congelan el costo del momento en
   `fn_merma_snapshot`, para no alterar el historial.
 - Las imágenes se guardan con un nombre único y se redimensionan a un máximo
   de 800 px (JPG/PNG); WebP se guarda sin redimensionar.
 
 La interfaz ofrece filtros por búsqueda y categoría, tabla en escritorio y
-tarjetas en móvil, acciones de costo/imagen/merma, alertas de productos sin
-costo o por vencer y panel mensual de mermas. El botón **Registrar inventario**
-abre el catálogo de Ventas (búsqueda, categorías y paginación) para elegir un
-producto e indicar cuánto ingresó; esa cantidad se suma al stock vigente. No
-existen controles manuales para descontar stock: las bajas se registran con
-mermas, ventas o envíos.
+tarjetas en móvil, acciones de imagen/merma, alertas de productos sin costo o
+por vencer y panel mensual de mermas. El botón **Registrar inventario** abre el
+catálogo de Ventas (búsqueda, categorías y paginación) para armar un registro
+con varios productos: cada línea tiene su cantidad y un costo opcional, y se
+puede quitar una línea con la **x** antes de confirmar. Todo el registro se
+envía en una sola operación; las cantidades se suman al stock vigente y el
+costo indicado pasa a ser el vigente del producto. No existen controles
+manuales para descontar stock ni para cambiar el costo fuera de este modal:
+las bajas se registran con mermas, ventas o envíos.
 
 ---
 

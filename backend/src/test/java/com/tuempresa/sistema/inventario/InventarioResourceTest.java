@@ -120,60 +120,80 @@ class InventarioResourceTest {
     }
 
     @Test
-    void crearProductoConCostoRegistraHistorialYAjustarStockRegistraMovimiento() throws Exception {
+    void registrarVariosProductosActualizaStockYCostoYRegistraHistorialYMovimientos() throws Exception {
         String token = AuthResourceTest.iniciarSesion("admin", "admin123");
-        String nombre = "Producto " + sufijo();
-        long id = crearProducto(token, nombre, "UNIDAD", "10.50", "4.00", "5", null);
+        long conCosto = crearProducto(token, "Con costo " + sufijo(), "UNIDAD", "10.50", "4.00", "5", null);
+        long sinCosto = crearProducto(token, "Sin cambio " + sufijo(), "UNIDAD", "3.50", "2.00", "2", null);
 
         given()
                 .cookie(COOKIE, token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"cantidad": 3}
-                        """)
-                .patch("/productos/{id}/stock", id)
+                        {"items": [
+                          {"productoId": %d, "cantidad": 3, "costo": 4.50},
+                          {"productoId": %d, "cantidad": 5}
+                        ]}
+                        """.formatted(conCosto, sinCosto))
+                .post("/productos/ingresos")
                 .then()
                 .statusCode(200)
-                .body("stock", equalTo(8.000f))
-                .body("sinCosto", equalTo(false));
+                .body("size()", equalTo(2))
+                .body("find { it.id == %d }.stock".formatted((int) conCosto), equalTo(8.000f))
+                .body("find { it.id == %d }.costoActual".formatted((int) conCosto), equalTo(4.50f))
+                .body("find { it.id == %d }.costoActual".formatted((int) sinCosto), equalTo(2.00f));
 
-        given()
-                .cookie(COOKIE, token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"costo": 4.50}
-                        """)
-                .patch("/productos/{id}/costo", id)
-                .then()
-                .statusCode(200)
-                .body("costoActual", equalTo(4.50f));
-
-        assertEquals(2, contar("select count(*) from producto_costo_historial where producto_id = ?", id));
-        assertEquals(0, new java.math.BigDecimal("4.50").compareTo(
-                texto("select max(costo) from producto_costo_historial where producto_id = ?", id)));
+        assertEquals(2, contar("select count(*) from producto_costo_historial where producto_id = ?", conCosto));
+        assertEquals(1, contar("select count(*) from producto_costo_historial where producto_id = ?", sinCosto));
         assertEquals(2, contar(
-                "select count(*) from movimiento_stock where producto_id = ? and tipo = 'INGRESO'", id));
+                "select count(*) from movimiento_stock where producto_id = ? and tipo = 'INGRESO'", conCosto));
         assertEquals(1, contar(
                 "select count(*) from movimiento_stock where producto_id = ? and tipo = 'INGRESO' "
-                        + "and cantidad = 3.000", id));
+                        + "and cantidad = 3.000", conCosto));
+        assertEquals(2, contar(
+                "select count(*) from movimiento_stock where producto_id = ? and tipo = 'INGRESO'", sinCosto));
     }
 
     @Test
-    void costoPuedeMarcarseComoNoRegistrado() {
+    void registrarInventarioSinCostoConservaElCostoVigente() throws Exception {
         String token = AuthResourceTest.iniciarSesion("admin", "admin123");
-        long id = crearProducto(token, "Sin costo " + sufijo(), "UNIDAD", "3.00", "2.00", "1", null);
+        long id = crearProducto(token, "Sin cambio " + sufijo(), "UNIDAD", "3.00", "2.00", "1", null);
 
         given()
                 .cookie(COOKIE, token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"costo": null}
-                        """)
-                .patch("/productos/{id}/costo", id)
+                .body("{\"items\": [{\"productoId\": %d, \"cantidad\": 2, \"costo\": null}]}".formatted(id))
+                .post("/productos/ingresos")
                 .then()
                 .statusCode(200)
-                .body("costoActual", equalTo(null))
-                .body("sinCosto", equalTo(true));
+                .body("[0].costoActual", equalTo(2.00f))
+                .body("[0].stock", equalTo(3.000f));
+
+        assertEquals(1, contar("select count(*) from producto_costo_historial where producto_id = ?", id));
+    }
+
+    @Test
+    void registrarInventarioRechazaProductosRepetidosYListaVacia() {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        long id = crearProducto(token, "Repetido " + sufijo(), "UNIDAD", "3.00", null, "1", null);
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"items\": [{\"productoId\": %d, \"cantidad\": 1}, {\"productoId\": %d, \"cantidad\": 2}]}"
+                        .formatted(id, id))
+                .post("/productos/ingresos")
+                .then()
+                .statusCode(400)
+                .body("message", containsString("No repitas"));
+
+        given()
+                .cookie(COOKIE, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"items\": []}")
+                .post("/productos/ingresos")
+                .then()
+                .statusCode(400)
+                .body("violations[0].message", containsString("entre 1 y 100"));
     }
 
     @Test
@@ -196,24 +216,20 @@ class InventarioResourceTest {
         given()
                 .cookie(COOKIE, token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"cantidad": -2}
-                        """)
-                .patch("/productos/{id}/stock", id)
+                .body("{\"items\": [{\"productoId\": %d, \"cantidad\": -2}]}".formatted(id))
+                .post("/productos/ingresos")
                 .then()
                 .statusCode(400)
-                .body("message", containsString("mayor a cero"));
+                .body("violations[0].message", containsString("mayor a cero"));
 
         given()
                 .cookie(COOKIE, token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"cantidad": 0.250}
-                        """)
-                .patch("/productos/{id}/stock", id)
+                .body("{\"items\": [{\"productoId\": %d, \"cantidad\": 0.250}]}".formatted(id))
+                .post("/productos/ingresos")
                 .then()
                 .statusCode(200)
-                .body("stock", equalTo(1.750f));
+                .body("[0].stock", equalTo(1.750f));
     }
 
     @Test

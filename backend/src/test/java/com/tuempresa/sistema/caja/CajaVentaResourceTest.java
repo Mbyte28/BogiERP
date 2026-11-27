@@ -214,8 +214,9 @@ class CajaVentaResourceTest {
         given()
                 .cookie(COOKIE, token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("{\"costo\": 9.00}")
-                .patch("/productos/{id}/costo", producto)
+                .body("{\"items\": [{\"productoId\": %d, \"cantidad\": 1, \"costo\": 9.00}]}"
+                        .formatted(producto))
+                .post("/productos/ingresos")
                 .then()
                 .statusCode(200);
 

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
   costoPorKilo,
-  costoTotal,
   inventarioApi,
   type Categoria,
   type DatosProducto,
@@ -32,7 +31,7 @@ export function ProductoForm({
   );
   const [tipoVenta, setTipoVenta] = useState<TipoVenta>(producto?.tipoVenta ?? "UNIDAD");
   const [precioVenta, setPrecioVenta] = useState(producto?.precioVenta ?? "");
-  const [costoActual, setCostoActual] = useState(producto ? costoTotal(producto) : "");
+  const [costoActual, setCostoActual] = useState("");
   const [stock, setStock] = useState(producto?.stock ?? "0");
   const [fechaVencimiento, setFechaVencimiento] = useState(producto?.fechaVencimiento ?? "");
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -56,27 +55,31 @@ export function ProductoForm({
     evento.preventDefault();
     setMensaje(null);
 
-    const costo = costoActual === "" ? null : Number(costoActual);
-    const stockNumerico = stock === "" ? 0 : Number(stock);
-    let costoGuardado: number | null = null;
-    if (costo !== null) {
-      try {
-        costoGuardado = tipoVenta === "KILO" ? costoPorKilo(costo, stockNumerico) : costo;
-      } catch (error) {
-        setMensaje(error instanceof Error ? error.message : "No se pudo registrar el costo");
-        return;
-      }
-    }
-
-    await guardar.mutateAsync({
+    const datos: DatosProducto = {
       nombre: nombre.trim(),
       categoriaId: categoriaId ? Number(categoriaId) : null,
       tipoVenta,
       precioVenta: Number(precioVenta),
-      costoActual: costoGuardado,
-      stock: stockNumerico,
       fechaVencimiento: fechaVencimiento || null,
-    });
+    };
+
+    if (!producto) {
+      const stockNumerico = stock === "" ? 0 : Number(stock);
+      datos.stock = stockNumerico;
+      let costoGuardado: number | null = null;
+      const costo = costoActual === "" ? null : Number(costoActual);
+      if (costo !== null) {
+        try {
+          costoGuardado = tipoVenta === "KILO" ? costoPorKilo(costo, stockNumerico) : costo;
+        } catch (error) {
+          setMensaje(error instanceof Error ? error.message : "No se pudo registrar el costo");
+          return;
+        }
+      }
+      datos.costoActual = costoGuardado;
+    }
+
+    await guardar.mutateAsync(datos);
   }
 
   return (
@@ -86,7 +89,8 @@ export function ProductoForm({
           {producto ? "Editar producto" : "Nuevo producto"}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Los precios están en soles. El costo es opcional y se puede registrar después.
+          Los precios están en soles. El costo es opcional; después se cambia al registrar
+          inventario.
         </p>
       </div>
 
@@ -147,28 +151,30 @@ export function ProductoForm({
           />
         </Campo>
 
-        <Campo
-          id="producto-costo"
-          label={tipoVenta === "KILO" ? "Costo total del stock (opcional)" : "Costo actual (opcional)"}
-        >
-          <input
+        {!producto && (
+          <Campo
             id="producto-costo"
-            type="number"
-            min="0"
-            step="0.01"
-            inputMode="decimal"
-            value={costoActual}
-            onChange={(evento) => setCostoActual(evento.target.value)}
-            className={ESTILO_CAMPO}
-            placeholder="Sin costo"
-          />
-          {tipoVenta === "KILO" && (
-            <p className="mt-1 text-xs text-ink-soft">
-              Se divide entre los kilos de stock. Ejemplo: 10 kg que costaron S/ 10.00 → S/ 1.00
-              por kilo.
-            </p>
-          )}
-        </Campo>
+            label={tipoVenta === "KILO" ? "Costo total del stock (opcional)" : "Costo actual (opcional)"}
+          >
+            <input
+              id="producto-costo"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={costoActual}
+              onChange={(evento) => setCostoActual(evento.target.value)}
+              className={ESTILO_CAMPO}
+              placeholder="Sin costo"
+            />
+            {tipoVenta === "KILO" && (
+              <p className="mt-1 text-xs text-ink-soft">
+                Se divide entre los kilos de stock. Ejemplo: 10 kg que costaron S/ 10.00 → S/ 1.00
+                por kilo.
+              </p>
+            )}
+          </Campo>
+        )}
 
         <Campo id="producto-stock" label={tipoVenta === "KILO" ? "Stock (kilos)" : "Stock (unidades)"}>
           <input
@@ -179,10 +185,16 @@ export function ProductoForm({
             step={tipoVenta === "KILO" ? "0.001" : "1"}
             inputMode="decimal"
             value={stock}
+            readOnly={Boolean(producto)}
             onChange={(evento) => setStock(evento.target.value)}
             className={ESTILO_CAMPO}
             placeholder="0"
           />
+          {producto && (
+            <p className="mt-1 text-xs text-ink-soft">
+              Para cambiar el stock o el costo, usa Registrar inventario.
+            </p>
+          )}
         </Campo>
 
         <Campo id="producto-vence" label="Fecha de vencimiento (opcional)">

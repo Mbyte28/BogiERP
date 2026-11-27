@@ -18,12 +18,12 @@ export function CatalogoProductos({
   onSeleccionar,
   textoBoton = "Agregar",
   deshabilitarSinStock = true,
-  seleccionadoId = null,
+  seleccionadosIds = [],
 }: {
   onSeleccionar: (producto: ItemCatalogo) => void;
   textoBoton?: string;
   deshabilitarSinStock?: boolean;
-  seleccionadoId?: number | null;
+  seleccionadosIds?: number[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
@@ -128,8 +128,8 @@ export function CatalogoProductos({
                   key={producto.id}
                   producto={producto}
                   textoBoton={textoBoton}
-                  deshabilitado={deshabilitarSinStock && Number(producto.stock) <= 0}
-                  seleccionado={seleccionadoId === producto.id}
+                  sinStock={deshabilitarSinStock && Number(producto.stock) <= 0}
+                  seleccionado={seleccionadosIds.includes(producto.id)}
                   onSeleccionar={() => onSeleccionar(producto)}
                 />
               ))}
@@ -215,13 +215,13 @@ function BotonCategoria({
 function TarjetaProducto({
   producto,
   textoBoton,
-  deshabilitado,
+  sinStock,
   seleccionado,
   onSeleccionar,
 }: {
   producto: ItemCatalogo;
   textoBoton: string;
-  deshabilitado: boolean;
+  sinStock: boolean;
   seleccionado: boolean;
   onSeleccionar: () => void;
 }) {
@@ -267,12 +267,12 @@ function TarjetaProducto({
           size="sm"
           className="w-full"
           variant={seleccionado ? "secondary" : "default"}
-          disabled={deshabilitado}
+          disabled={sinStock || seleccionado}
           aria-label={`${textoBoton} ${producto.nombre}`}
           onClick={onSeleccionar}
         >
           {seleccionado ? <Check /> : <Plus />}
-          {deshabilitado ? "Sin stock" : seleccionado ? "Seleccionado" : textoBoton}
+          {sinStock ? "Sin stock" : seleccionado ? "Seleccionado" : textoBoton}
         </Button>
       </div>
     </li>

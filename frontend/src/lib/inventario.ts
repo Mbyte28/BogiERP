@@ -74,6 +74,12 @@ export interface DatosMerma {
   motivo?: string;
 }
 
+export interface LineaInventario {
+  productoId: number;
+  cantidad: number;
+  costo?: number | null;
+}
+
 function consulta(parametros: object): string {
   const pares = Object.entries(parametros as Record<string, unknown>)
     .filter(([, valor]) => valor !== null && valor !== undefined && valor !== "")
@@ -114,20 +120,6 @@ export function costoPorKilo(costoTotal: number, kilos: number): number {
   return Math.round((costoTotal / kilos + Number.EPSILON) * 100) / 100;
 }
 
-/** Muestra en el formulario el costo total cuando el producto se vende por kilo. */
-export function costoTotal(producto: Pick<Producto, "costoActual" | "stock" | "tipoVenta">): string {
-  if (producto.costoActual === null || producto.costoActual === undefined || producto.costoActual === "") {
-    return "";
-  }
-  const unitario = Number(producto.costoActual);
-  const stock = Number(producto.stock);
-  if (!Number.isFinite(unitario) || (producto.tipoVenta === "KILO" && !Number.isFinite(stock))) {
-    return "";
-  }
-  const total = producto.tipoVenta === "KILO" ? unitario * stock : unitario;
-  return (Math.round((total + Number.EPSILON) * 100) / 100).toFixed(2);
-}
-
 export function fecha(valor: string | null): string {
   if (!valor) return "Sin fecha";
   const fecha = new Date(valor.length === 10 ? `${valor}T00:00:00` : valor);
@@ -147,10 +139,8 @@ export const inventarioApi = {
   crearProducto: (datos: DatosProducto) => api.post<Producto>("/productos", datos),
   actualizarProducto: (id: number, datos: DatosProducto) =>
     api.put<Producto>(`/productos/${id}`, datos),
-  registrarIngreso: (id: number, cantidad: number) =>
-    api.patch<Producto>(`/productos/${id}/stock`, { cantidad }),
-  actualizarCosto: (id: number, costo: number | null) =>
-    api.patch<Producto>(`/productos/${id}/costo`, { costo }),
+  registrarInventario: (items: LineaInventario[]) =>
+    api.post<Producto[]>("/productos/ingresos", { items }),
   subirImagen: (id: number, archivo: File) => {
     const datos = new FormData();
     datos.append("imagen", archivo);
