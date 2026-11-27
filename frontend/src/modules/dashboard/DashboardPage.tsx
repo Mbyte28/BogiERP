@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Area,
   AreaChart,
@@ -196,25 +196,42 @@ export default function DashboardPage() {
     queryFn: () => dashboardApi.mes(mesActivo as string),
     enabled: Boolean(mesActivo),
   });
+
+  // El ranking sigue al periodo elegido. Si se toca un mes específico, se
+  // calcula solo para ese mes; si no, abarca todo el rango (6/12 meses o año).
+  const desdeRanking = mesSeleccionado ? inicioDeMes(mesSeleccionado) : desde;
+  const hastaRanking = mesSeleccionado ? finDeMes(mesSeleccionado) : hasta;
+  const rankingHabilitado = desdeRanking !== undefined && hastaRanking !== undefined;
+  const masVendidosRanking = useQuery({
+    queryKey: ["dashboard", "top", desdeRanking, hastaRanking, "desc"],
+    queryFn: () => dashboardApi.topProductos(desdeRanking as string, hastaRanking as string, "desc"),
+    enabled: rankingHabilitado,
+    placeholderData: keepPreviousData,
+  });
   const menosVendidos = useQuery({
-    queryKey: ["dashboard", "top", mesActivo, "asc"],
-    queryFn: () =>
-      dashboardApi.topProductos(inicioDeMes(mesActivo as string), finDeMes(mesActivo as string), "asc"),
-    enabled: Boolean(mesActivo),
+    queryKey: ["dashboard", "top", desdeRanking, hastaRanking, "asc"],
+    queryFn: () => dashboardApi.topProductos(desdeRanking as string, hastaRanking as string, "asc"),
+    enabled: rankingHabilitado,
+    placeholderData: keepPreviousData,
   });
 
   const resumenMes = detalle.data?.resumen;
-  const masVendidos = detalle.data?.topProductos ?? [];
+  const masVendidos = masVendidosRanking.data ?? [];
   const menos = menosVendidos.data ?? [];
   const porDia = detalle.data?.porDia ?? [];
-  const dona = (detalle.data?.topProductos ?? []).slice(0, 5).map((producto, indice) => ({
+  const dona = masVendidos.slice(0, 5).map((producto, indice) => ({
     ...producto,
     valor: numero(producto.cantidad),
     color: COLORES[indice % COLORES.length],
   }));
+  const etiquetaRanking = mesSeleccionado
+    ? etiquetaMesCompleta(mesSeleccionado)
+    : periodo === "anio"
+      ? `año ${ANIO_ACTUAL}`
+      : `últimos ${valorPeriodo} meses`;
 
   const error =
-    mensuales.error ?? resumen.error ?? detalle.error ?? menosVendidos.error ?? null;
+    mensuales.error ?? resumen.error ?? detalle.error ?? masVendidosRanking.error ?? menosVendidos.error ?? null;
 
   function seleccionarMes(mes: string | undefined) {
     if (mes) setMesSeleccionado(mes);
@@ -372,7 +389,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Productos más vendidos</CardTitle>
-                <p className="text-sm text-ink-soft">Distribución por cantidad del mes.</p>
+                <p className="text-sm text-ink-soft">Distribución por cantidad del periodo.</p>
               </CardHeader>
               <CardContent>
                 {dona.length ? (
@@ -558,6 +575,7 @@ export default function DashboardPage() {
               <Card className="min-w-0">
                 <CardHeader className="pb-2">
                   <CardTitle>Más vendidos</CardTitle>
+                  <p className="text-sm text-ink-soft">Top 5: {etiquetaRanking}.</p>
                 </CardHeader>
                 <CardContent>
                   {masVendidos.length ? (
@@ -567,13 +585,18 @@ export default function DashboardPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="py-6 text-center text-sm text-ink-soft">Sin ventas este mes.</p>
+                    <p className="py-6 text-center text-sm text-ink-soft">
+                      Sin ventas en el periodo.
+                    </p>
                   )}
                 </CardContent>
               </Card>
               <Card className="min-w-0">
                 <CardHeader className="pb-2">
                   <CardTitle>Menos vendidos</CardTitle>
+                  <p className="text-sm text-ink-soft">
+                    Top 5: {etiquetaRanking}, incluye los que no vendieron.
+                  </p>
                 </CardHeader>
                 <CardContent>
                   {menos.length ? (

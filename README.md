@@ -363,7 +363,9 @@ costo registrado. Los meses y días se agrupan en `America/Lima`.
 La interfaz muestra KPIs con sparkline, un área de ventas y ganancia neta,
 barras redondeadas por mes con el mes activo resaltado, una dona de los productos
 más vendidos, el detalle diario del mes y tarjetas con los 5 más y los 5 menos
-vendidos, con miniaturas. El selector permite cambiar entre 6 meses, 12 meses y un año
+vendidos, con miniaturas. El ranking se recalcula con el periodo elegido: si se
+eligen 6/12 meses o un año, abarca todo ese lapso; si se toca un mes específico,
+se limita a ese mes. El selector permite cambiar entre 6 meses, 12 meses y un año
 completo, y elegir cualquier mes de la serie tocando una barra o el selector.
 
 ---

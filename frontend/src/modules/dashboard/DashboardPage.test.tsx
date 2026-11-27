@@ -180,8 +180,8 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Detalle de Nov de 2026")).toBeInTheDocument();
     expect(await screen.findByText(textoDinero(200))).toBeInTheDocument();
     expect(screen.getAllByText("Pan").length).toBeGreaterThan(0);
-    expect(screen.getByText("Café")).toBeInTheDocument();
-    expect(screen.getByText("Azúcar")).toBeInTheDocument();
+    expect(screen.getAllByText("Café").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Azúcar").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Mantequilla").length).toBeGreaterThan(0);
     expect(screen.getByText("Top 5")).toBeInTheDocument();
     expect(screen.getAllByText(/ uni ·/).length).toBeGreaterThanOrEqual(5);
@@ -198,7 +198,8 @@ describe("DashboardPage", () => {
         expect.stringContaining("/dashboard/ventas-mensuales?meses=6"),
         expect.stringContaining("/dashboard/resumen?desde=2026-06-01&hasta=2026-11-30"),
         expect.stringContaining("/dashboard/mes?mes=2026-11"),
-        expect.stringContaining("/dashboard/top-productos?desde=2026-11-01&hasta=2026-11-30&orden=asc"),
+        expect.stringContaining("/dashboard/top-productos?desde=2026-06-01&hasta=2026-11-30&orden=desc"),
+        expect.stringContaining("/dashboard/top-productos?desde=2026-06-01&hasta=2026-11-30&orden=asc"),
       ]),
     );
   });
@@ -222,6 +223,43 @@ describe("DashboardPage", () => {
     expect(
       peticiones.mock.calls.some(([url]) => url.includes("/dashboard/mes?mes=2026-10")),
     ).toBe(true);
+    await waitFor(() => {
+      const urls = peticiones.mock.calls.map(([url]) => url);
+      expect(urls).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(
+            "/dashboard/top-productos?desde=2026-10-01&hasta=2026-10-31&orden=desc",
+          ),
+          expect.stringContaining(
+            "/dashboard/top-productos?desde=2026-10-01&hasta=2026-10-31&orden=asc",
+          ),
+        ]),
+      );
+    });
+    expect(await screen.findByText("Top 5: Oct de 2026.")).toBeInTheDocument();
+  });
+
+  it("recalcula ambos rankings en todo el periodo al cambiar el rango", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    expect(await screen.findByText("Top 5: últimos 6 meses.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Periodo"), { target: { value: "anio:2026" } });
+
+    await waitFor(() => {
+      const urls = peticiones.mock.calls.map(([url]) => url);
+      expect(urls).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(
+            "/dashboard/top-productos?desde=2026-01-01&hasta=2026-12-31&orden=desc",
+          ),
+          expect.stringContaining(
+            "/dashboard/top-productos?desde=2026-01-01&hasta=2026-12-31&orden=asc",
+          ),
+        ]),
+      );
+    });
+    expect(await screen.findByText("Top 5: año 2026.")).toBeInTheDocument();
   });
 
   it("muestra el error del servidor en español", async () => {

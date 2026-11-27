@@ -14,6 +14,10 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.path.json.JsonPath;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -258,6 +262,39 @@ class DashboardResourceTest {
     }
 
     @Test
+    void rankingAcumulaCantidadesDeTodoElRango() throws Exception {
+        String token = AuthResourceTest.iniciarSesion("admin", "admin123");
+        YearMonth mesActual = YearMonth.now(ZONA);
+        YearMonth mesAnterior = mesActual.minusMonths(1);
+        long producto = crearProducto(token, "Rango dashboard " + sufijo(), "3.00", "1.00", "20");
+        crearCajaConVenta(token, producto, "2");
+        crearCajaConVenta(token, producto, "3");
+        moverUltimaVentaA(mesAnterior);
+
+        String desde = mesAnterior.atDay(1).toString();
+        String hasta = mesActual.atEndOfMonth().toString();
+        assertEquals(5.0, cantidadEnRango(producto, desde, hasta), 0.001);
+        assertEquals(
+                2.0,
+                cantidadEnRango(producto, mesActual.atDay(1).toString(), hasta),
+                0.001);
+        assertEquals(
+                3.0,
+                cantidadEnRango(producto, desde, mesAnterior.atEndOfMonth().toString()),
+                0.001);
+
+        given()
+                .cookie(COOKIE, token)
+                .queryParam("desde", desde)
+                .queryParam("hasta", hasta)
+                .queryParam("orden", "desc")
+                .get("/dashboard/top-productos")
+                .then()
+                .statusCode(200)
+                .body("size()", greaterThanOrEqualTo(1));
+    }
+
+    @Test
     void permisosPorModuloSeValidanEnCadaEndpoint() {
         String tokenAdmin = AuthResourceTest.iniciarSesion("admin", "admin123");
         String marca = sufijo();
@@ -310,6 +347,37 @@ class DashboardResourceTest {
             float actual = cantidades.get(i);
             assertTrue(descendente ? anterior >= actual : anterior <= actual,
                     "Orden inesperado: " + cantidades);
+        }
+    }
+
+    private void moverUltimaVentaA(YearMonth mes) throws Exception {
+        try (Connection conexion = dataSource.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(
+                        "update venta set creado_en = ? where id = (select max(id) from venta)")) {
+            sentencia.setTimestamp(
+                    1, Timestamp.from(mes.atDay(10).atStartOfDay(ZONA).toInstant()));
+            assertEquals(1, sentencia.executeUpdate());
+        }
+    }
+
+    private double cantidadEnRango(long productoId, String desde, String hasta) throws Exception {
+        try (Connection conexion = dataSource.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement("""
+                        select coalesce(sum(cantidad), 0)
+                        from v_lineas_ingreso
+                        where producto_id = ? and fecha >= ? and fecha < ?
+                        """)) {
+            sentencia.setLong(1, productoId);
+            sentencia.setTimestamp(
+                    2, Timestamp.from(LocalDate.parse(desde).atStartOfDay(ZONA).toInstant()));
+            sentencia.setTimestamp(
+                    3,
+                    Timestamp.from(
+                            LocalDate.parse(hasta).plusDays(1).atStartOfDay(ZONA).toInstant()));
+            try (ResultSet resultado = sentencia.executeQuery()) {
+                resultado.next();
+                return resultado.getDouble(1);
+            }
         }
     }
 
