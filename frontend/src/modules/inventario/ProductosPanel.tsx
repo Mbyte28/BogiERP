@@ -246,7 +246,7 @@ export function ProductosPanel() {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
-                    <th className="py-3 pl-3 pr-2 text-left font-semibold">Producto</th>
+                    <th className="py-3 pl-3 pr-2 font-semibold">Producto</th>
                     <th className="px-3 py-3 font-semibold">Categoría</th>
                     <th className="px-3 py-3 font-semibold">Stock</th>
                     <th className="px-3 py-3 font-semibold">Precio</th>

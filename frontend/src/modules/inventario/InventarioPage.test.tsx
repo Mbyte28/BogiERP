@@ -261,7 +261,7 @@ describe("InventarioPage", () => {
     const tabla = screen.getByRole("table");
     const columnaProducto = tabla.querySelector("colgroup col");
     expect(columnaProducto).toHaveStyle({ width: "232px" });
-    expect(within(tabla).getByRole("columnheader", { name: "Producto" })).toHaveClass(
+    expect(within(tabla).getByRole("columnheader", { name: "Producto" })).not.toHaveClass(
       "text-left",
     );
 
