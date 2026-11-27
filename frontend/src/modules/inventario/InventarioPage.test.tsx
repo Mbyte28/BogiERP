@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Categoria, Merma, Producto, ProductoPage } from "@/lib/inventario";
+import type { PaginaCatalogo } from "@/lib/venta";
 import InventarioPage from "./InventarioPage";
 
 const categorias: Categoria[] = [
@@ -48,6 +49,44 @@ const productos: Producto[] = [
 
 const pagina: ProductoPage = { items: productos, total: 2, page: 0, size: 25 };
 
+const catalogo: PaginaCatalogo = {
+  items: [
+    {
+      id: 1,
+      nombre: "Leche entera",
+      categoriaNombre: "Lácteos",
+      categoriaIcono: "milk",
+      imagen: null,
+      tipoVenta: "UNIDAD",
+      precioVenta: "5.50",
+      stock: "12",
+      sinCosto: true,
+      diasVencimiento: 3,
+      cantidadVendida: 12,
+      masVendido: true,
+      fechaVencimiento: "2026-11-28",
+    },
+    {
+      id: 2,
+      nombre: "Pollo fresco",
+      categoriaNombre: "Carnes",
+      categoriaIcono: "beef",
+      imagen: null,
+      tipoVenta: "KILO",
+      precioVenta: "12.00",
+      stock: "4.500",
+      sinCosto: false,
+      diasVencimiento: null,
+      cantidadVendida: "4.5",
+      masVendido: false,
+      fechaVencimiento: null,
+    },
+  ],
+  total: 2,
+  page: 0,
+  size: 25,
+};
+
 const mermas: Merma[] = [
   {
     id: 10,
@@ -90,6 +129,7 @@ function simularApi(peticiones = vi.fn()) {
         return respuesta({ id: 5, nombre: "Panadería", icono: "package", productos: 0 }, 201);
       }
       if (url.includes("/categorias")) return respuesta(categorias);
+      if (url.includes("/catalogo")) return respuesta(catalogo);
 
       if (url.includes("/productos") && metodo === "POST") {
         return respuesta({ ...productos[0], id: 3, nombre: "Nueva gaseosa" }, 201);
@@ -144,6 +184,58 @@ describe("InventarioPage", () => {
       );
       expect(llamada).toBeDefined();
     });
+  });
+
+  it("no permite ajustar stock manualmente desde la tabla de productos", async () => {
+    simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    expect(
+      screen.queryByRole("button", { name: "Quitar stock de Leche entera" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Agregar stock a Leche entera" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("registra inventario desde el catálogo de ventas dentro de un modal", async () => {
+    const peticiones = simularApi();
+    renderizar();
+
+    await screen.findAllByText("Leche entera");
+    fireEvent.click(screen.getByRole("button", { name: "Registrar inventario" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar inventario" });
+
+    fireEvent.change(within(dialogo).getByLabelText("Buscar productos"), {
+      target: { value: "pollo" },
+    });
+    await waitFor(() => {
+      expect(
+        peticiones.mock.calls.some(([url]) => url.includes("/catalogo?q=pollo")),
+      ).toBe(true);
+    });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Carnes" }));
+    await waitFor(() => {
+      expect(
+        peticiones.mock.calls.some(([url]) => url.includes("/catalogo?categoriaId=3")),
+      ).toBe(true);
+    });
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Seleccionar Leche entera" }));
+    fireEvent.change(within(dialogo).getByLabelText("Cantidad a ingresar"), {
+      target: { value: "5" },
+    });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Registrar inventario" }));
+
+    await waitFor(() => {
+      const llamada = peticiones.mock.calls.find(
+        ([url, init]) => url.includes("/productos/1/stock") && init?.method === "PATCH",
+      );
+      expect(llamada).toBeDefined();
+      expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({ cantidad: 5 });
+    });
+    expect(await within(dialogo).findByText("Inventario registrado.")).toBeInTheDocument();
   });
 
   it("crea un producto con los datos del formulario", async () => {

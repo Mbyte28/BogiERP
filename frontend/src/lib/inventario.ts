@@ -147,8 +147,8 @@ export const inventarioApi = {
   crearProducto: (datos: DatosProducto) => api.post<Producto>("/productos", datos),
   actualizarProducto: (id: number, datos: DatosProducto) =>
     api.put<Producto>(`/productos/${id}`, datos),
-  ajustarStock: (id: number, cantidadAjuste: number) =>
-    api.patch<Producto>(`/productos/${id}/stock`, { cantidad: cantidadAjuste }),
+  registrarIngreso: (id: number, cantidad: number) =>
+    api.patch<Producto>(`/productos/${id}/stock`, { cantidad }),
   actualizarCosto: (id: number, costo: number | null) =>
     api.patch<Producto>(`/productos/${id}/costo`, { costo }),
   subirImagen: (id: number, archivo: File) => {

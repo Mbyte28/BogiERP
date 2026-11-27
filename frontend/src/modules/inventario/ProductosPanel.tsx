@@ -6,7 +6,6 @@ import {
   CircleDollarSign,
   ClipboardList,
   ImagePlus,
-  Minus,
   Pencil,
   Plus,
   Search,
@@ -29,6 +28,7 @@ import { CostoForm } from "./CostoForm";
 import { IconoCategoria } from "./IconoCategoria";
 import { MermaForm } from "./MermaForm";
 import { ProductoForm } from "./ProductoForm";
+import { RegistrarInventarioSheet } from "./RegistrarInventarioSheet";
 
 export function ProductosPanel() {
   const cliente = useQueryClient();
@@ -38,6 +38,7 @@ export function ProductosPanel() {
   const [formulario, setFormulario] = useState<Producto | "nuevo" | null>(null);
   const [costoProducto, setCostoProducto] = useState<Producto | null>(null);
   const [mermaProducto, setMermaProducto] = useState<Producto | null>(null);
+  const [registroAbierto, setRegistroAbierto] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
   const categorias = useQuery({
@@ -55,16 +56,6 @@ export function ProductosPanel() {
         size: 25,
       }),
     refetchInterval: REFRESCO_RAPIDO,
-  });
-
-  const stock = useMutation({
-    mutationFn: ({ id, valor }: { id: number; valor: number }) =>
-      inventarioApi.ajustarStock(id, valor),
-    onSuccess: async () => {
-      await cliente.invalidateQueries({ queryKey: ["productos"] });
-      setMensaje(null);
-    },
-    onError: (fallo: Error) => setMensaje(fallo.message),
   });
 
   const imagen = useMutation({
@@ -102,6 +93,16 @@ export function ProductosPanel() {
         </div>
         <div className="flex items-center gap-2">
           <CategoriasPanel categorias={categorias.data ?? []} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Registrar inventario"
+            onClick={() => setRegistroAbierto(true)}
+          >
+            <Plus />
+            <span className="hidden sm:inline">Registrar inventario</span>
+          </Button>
           <Button type="button" size="sm" onClick={() => setFormulario("nuevo")}>
             <Plus />
             <span className="hidden sm:inline">Nuevo producto</span>
@@ -207,7 +208,6 @@ export function ProductosPanel() {
                       <td className="py-3 pl-3">
                         <Acciones
                           producto={producto}
-                          onAjustar={(valor) => void stock.mutateAsync({ id: producto.id, valor })}
                           onCosto={() => setCostoProducto(producto)}
                           onMerma={() => setMermaProducto(producto)}
                           onEditar={() => setFormulario(producto)}
@@ -256,7 +256,6 @@ export function ProductosPanel() {
                   <div className="mt-3">
                     <Acciones
                       producto={producto}
-                      onAjustar={(valor) => void stock.mutateAsync({ id: producto.id, valor })}
                       onCosto={() => setCostoProducto(producto)}
                       onMerma={() => setMermaProducto(producto)}
                       onEditar={() => setFormulario(producto)}
@@ -362,6 +361,11 @@ export function ProductosPanel() {
           )}
         </SheetContent>
       </Sheet>
+
+      <RegistrarInventarioSheet
+        abierto={registroAbierto}
+        onCerrar={() => setRegistroAbierto(false)}
+      />
     </Card>
   );
 }
@@ -442,14 +446,12 @@ function Dato({ label, valor }: { label: string; valor: string }) {
 
 function Acciones({
   producto,
-  onAjustar,
   onCosto,
   onMerma,
   onEditar,
   onImagen,
 }: {
   producto: Producto;
-  onAjustar: (valor: number) => void;
   onCosto: () => void;
   onMerma: () => void;
   onEditar: () => void;
@@ -458,24 +460,6 @@ function Acciones({
   const nombre = producto.nombre;
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        aria-label={`Quitar stock de ${nombre}`}
-        onClick={() => onAjustar(-1)}
-      >
-        <Minus />
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        size="icon"
-        aria-label={`Agregar stock a ${nombre}`}
-        onClick={() => onAjustar(1)}
-      >
-        <Plus />
-      </Button>
       <Button
         type="button"
         variant="ghost"

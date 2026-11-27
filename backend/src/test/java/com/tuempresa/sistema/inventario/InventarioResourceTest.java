@@ -202,7 +202,7 @@ class InventarioResourceTest {
                 .patch("/productos/{id}/stock", id)
                 .then()
                 .statusCode(400)
-                .body("message", containsString("Stock insuficiente"));
+                .body("message", containsString("mayor a cero"));
 
         given()
                 .cookie(COOKIE, token)
@@ -422,14 +422,51 @@ class InventarioResourceTest {
                 .then()
                 .statusCode(201);
 
+        String sinCatalogo = "sincat_" + sufijo;
+        long rolSinCatalogo = given()
+                .cookie(COOKIE, tokenAdmin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"nombre": "Sin catálogo %s", "modulos": ["HISTORIAL"]}
+                        """.formatted(sufijo))
+                .post("/roles")
+                .then()
+                .statusCode(201)
+                .extract()
+                .jsonPath()
+                .getLong("id");
+        given()
+                .cookie(COOKIE, tokenAdmin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"username": "%s", "password": "clave123", "rolId": %d}
+                        """.formatted(sinCatalogo, rolSinCatalogo))
+                .post("/usuarios")
+                .then()
+                .statusCode(201);
+
         String tokenConPermiso = AuthResourceTest.iniciarSesion(conPermiso, "clave123");
         String tokenSinPermiso = AuthResourceTest.iniciarSesion(sinPermiso, "clave123");
+        String tokenSinCatalogo = AuthResourceTest.iniciarSesion(sinCatalogo, "clave123");
 
         given()
                 .cookie(COOKIE, tokenConPermiso)
                 .get("/productos")
                 .then()
                 .statusCode(200);
+
+        given()
+                .cookie(COOKIE, tokenConPermiso)
+                .get("/catalogo")
+                .then()
+                .statusCode(200);
+
+        given()
+                .cookie(COOKIE, tokenSinCatalogo)
+                .get("/catalogo")
+                .then()
+                .statusCode(403)
+                .body("message", containsString("módulo"));
 
         given()
                 .cookie(COOKIE, tokenSinPermiso)

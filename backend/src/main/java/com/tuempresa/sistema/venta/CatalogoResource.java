@@ -15,7 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 
 @Path("/catalogo")
 @Authenticated
-@RequiereModulo({Modulo.VENTA})
+@RequiereModulo({Modulo.VENTA, Modulo.INVENTARIO})
 @Produces(MediaType.APPLICATION_JSON)
 public class CatalogoResource {
 

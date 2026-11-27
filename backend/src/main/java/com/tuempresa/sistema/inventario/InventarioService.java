@@ -148,18 +148,15 @@ public class InventarioService {
     public ProductoResponse ajustarStock(Long id, AjustarStockRequest solicitud) {
         Producto producto = buscarProducto(id);
         BigDecimal cantidad = solicitud.cantidad();
-        if (cantidad.signum() == 0) {
-            throw Errores.badRequest("La cantidad debe ser diferente de cero");
+        if (cantidad.signum() <= 0) {
+            throw Errores.badRequest("La cantidad a ingresar debe ser mayor a cero");
         }
 
         BigDecimal nuevoStock = producto.stock.add(cantidad);
-        if (nuevoStock.signum() < 0) {
-            throw Errores.badRequest("Stock insuficiente para registrar el movimiento");
-        }
         validarStock(producto.tipoVenta, nuevoStock);
 
         producto.stock = nuevoStock;
-        registrarMovimiento(producto, cantidad.signum() > 0 ? "INGRESO" : "AJUSTE", cantidad, null);
+        registrarMovimiento(producto, "INGRESO", cantidad, null);
         return aRespuesta(producto);
     }
 

@@ -223,7 +223,7 @@ requieren autenticación y el módulo `INVENTARIO`.
 | `PUT/DELETE` | `/api/categorias/{id}` | Renombrar y eliminar categoría |
 | `GET` | `/api/productos?page=&size=&q=&categoriaId=` | Productos paginados y filtrados |
 | `POST/PUT` | `/api/productos` y `/api/productos/{id}` | Crear y editar producto |
-| `PATCH` | `/api/productos/{id}/stock` | Ajustar stock (genera `movimiento_stock`) |
+| `PATCH` | `/api/productos/{id}/stock` | Registrar ingreso de stock (solo cantidades positivas) |
 | `PATCH` | `/api/productos/{id}/costo` | Cambiar costo; `null` lo deja sin costo |
 | `POST` | `/api/productos/{id}/imagen` | Subir imagen (multipart, JPG/PNG/WebP ≤ 5 MB) |
 | `GET` | `/api/uploads/{nombre}` | Descargar imagen en desarrollo (en producción la sirve Nginx) |
@@ -233,8 +233,9 @@ Reglas que aplica la base de datos y el backend:
 
 - Los productos por **unidad** solo admiten stock entero; los de **kilo**
   aceptan hasta tres decimales. El stock nunca baja de cero.
-- Todo cambio de stock se registra en `movimiento_stock` (`INGRESO`, `AJUSTE`
-  o `MERMA`), incluido el stock inicial.
+- Todo cambio de stock se registra en `movimiento_stock` (`INGRESO`, `VENTA`,
+  `FIADO` o `MERMA`), incluido el stock inicial. El alta manual solo suma;
+  las bajas ocurren con mermas, ventas y envíos.
 - Cada cambio de costo se guarda en `producto_costo_historial`.
 - Las mermas descuentan stock y congelan el costo del momento en
   `fn_merma_snapshot`, para no alterar el historial.
@@ -242,8 +243,12 @@ Reglas que aplica la base de datos y el backend:
   de 800 px (JPG/PNG); WebP se guarda sin redimensionar.
 
 La interfaz ofrece filtros por búsqueda y categoría, tabla en escritorio y
-tarjetas en móvil, acciones rápidas de stock/costo/imagen/merma, alertas de
-productos sin costo o por vencer y panel mensual de mermas.
+tarjetas en móvil, acciones de costo/imagen/merma, alertas de productos sin
+costo o por vencer y panel mensual de mermas. El botón **Registrar inventario**
+abre el catálogo de Ventas (búsqueda, categorías y paginación) para elegir un
+producto e indicar cuánto ingresó; esa cantidad se suma al stock vigente. No
+existen controles manuales para descontar stock: las bajas se registran con
+mermas, ventas o envíos.
 
 ---
 
@@ -254,7 +259,7 @@ Todos los endpoints requieren autenticación y su módulo (`VENTA` o `CAJA`).
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `GET` | `/api/catalogo?page=&size=25&q=&categoriaId=` | Catálogo paginado por cantidad vendida (uni/kg) |
+| `GET` | `/api/catalogo?page=&size=25&q=&categoriaId=` | Catálogo paginado por cantidad vendida (uni/kg); lo usan Ventas e Inventario |
 | `POST` | `/api/ventas` | Registrar venta, descontar stock y guardar movimientos |
 | `GET` | `/api/caja/actual` | Estado de la caja (`{ abierta, caja }`) |
 | `POST` | `/api/caja/abrir` y `/api/caja/cerrar` | Abrir o cerrar la caja actual |
